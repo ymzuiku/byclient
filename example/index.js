@@ -5,7 +5,10 @@ const start = async () => {
   await plot.db.init('mongodb://127.0.0.1:27017', 'test');
 
   plot.dbLocker = {
-    test2: ['$eq.user', '$eq.password'],
+    dev_test: {
+      filter: ['$eq.user', '$eq.password'],
+      trim: [],
+    },
   };
 
   plot.app.get('/ping', (req, rep) => {

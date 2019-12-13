@@ -7,7 +7,6 @@ const axios = Axios.create({
 const lighting = (...args) => axios.post('/serverless', [...args]);
 
 // lighting({
-//   byId: '5df3d87143234867f3626f2f',
 //   method: 'insertOne',
 //   argsSha256: ['0.password'],
 //   argsObjectId: ['0.id'],
@@ -15,7 +14,7 @@ const lighting = (...args) => axios.post('/serverless', [...args]);
 //   block: {
 //     'ops.0.age': '11',
 //   },
-//   dataFilter: ['ops.0.password'],
+//   trim: ['ops.0.password'],
 // })
 //   .then(res => {
 //     console.log(res.data);
@@ -25,40 +24,18 @@ const lighting = (...args) => axios.post('/serverless', [...args]);
 //   });
 
 // lighting({
-//   byId: '5df3d87143234867f3626f2f',
-//   method: 'insertMany',
-//   args: [
-//     [
-//       { name: 'dog', age: '11', password: 111 },
-//       { name: 'cat', age: '11' },
-//     ],
-//   ],
-// }).then(res => {
-//   console.log(res.data);
-// });
-
-// lighting({
-//   byId: '5df3d87143234867f3626f2f',
-//   method: 'updateOne',
-//   args: [null, { $set: { name: 'aaa' } }],
-// }).then(res => {
-//   console.log(res.data);
-// });
-
-// lighting({
 //   col: 'dev_user',
-//   byId: '5df3d87143234867f3626f2f',
-//   method: 'insertOne',
-//   args: [{ username: 'dog', password: '11', token: 'aa', createAt: Date.now() }],
+//   method: 'updateOne',
+//   args: [{ token: { $eq: 'aa' } }, { $set: { createAt: Date.now() } }],
 // }).then(res => {
 //   console.log(res.data);
 // });
 
 lighting({
   col: 'dev_user',
-  byId: '5df3d87143234867f3626f2f',
-  method: 'updateOne',
-  args: [{ token: { $eq: 'aa' } }, { $set: { createAt: Date.now() } }],
+  method: 'findOne',
+  args: [{}, null],
+  // args: [{ token: { $eq: 'aa' } }, { $set: { createAt: Date.now() } }],
 }).then(res => {
   console.log(res.data);
 });

@@ -44,7 +44,10 @@ const start = async () => {
 
   // 安全性：描述哪些表的update、delete操作需要校验的对象
   lightning.dbLocker = {
-    user: ['token.$eq', ['username.$eq', 'password.$eq']],
+    user: {
+      filter: ['token.$eq', ['username.$eq', 'password.$eq']],
+      trim: ['token.$eq'],
+    },
   };
 
   // 启动 serverless 服务
@@ -86,6 +89,18 @@ lighting({
     console.log(err.toJSON());
   });
 
+// 暂时仅支持以下 method:
+// const canUseMethod = {
+//   insert: true,
+//   insertMany: true,
+//   insertOne: true,
+//   update: true,
+//   updateMany: true,
+//   updateOne: true,
+//   replaceOne: true,
+//   find: true,
+// };
+
 // 我们还可以描述哪些字段存表之前，在后端使用sha256加密，或将字段转为ObjectId:
 lighting({
   db: 'test',
@@ -111,7 +126,7 @@ lighting({
   argsObjectId: ['0._id'], // 调整字段：args[0][_id]
   args: [{ _id: '5df3d87143234867f3626f2f', username: 'dog', password: 'bbb', createAt: Date.now() }],
   // 删除返回值的 ops[0].password 字段
-  dataFilter: ['ops.0.password'],
+  trim: ['ops.0.password'],
 })
   .then(res => {
     console.log(res.data);
@@ -127,7 +142,7 @@ lighting({
   method: 'updateOne',
   // 上文在服务端设置了 dbLocker, 其中描述了必须声明对 user 表的操作必须校验 username 和 password
   args: [{ username: { $eq: 'dog' }, password: { $eq: 'bbb' } }, { $set: { money: 100, updateAt: Date.now() } }],
-  dataFilter: ['ops.0.password'],
+  trim: ['ops.0.password'],
 })
   .then(res => {
     console.log(res.data);

@@ -10,13 +10,25 @@ interface IEvent {
   col?: string;
   block: any;
   method: string;
-  args: any[];
+  args?: any[];
   // 用来标记需要转化为 sha256 的args路径
   argsSha256?: string[];
   // 用来标记需要转化为 ObjectId 的args路径
   argsObjectId?: string[];
-  dataFilter?: string[];
+  trim?: string[];
 }
+
+const canUseMethod = {
+  insert: true,
+  insertMany: true,
+  insertOne: true,
+  update: true,
+  updateMany: true,
+  updateOne: true,
+  replaceOne: true,
+  find: true,
+  findOne: true,
+};
 
 export const serverless = async (url = '/serverless') => {
   app.post(url, async (req, rep) => {
@@ -44,14 +56,14 @@ export const serverless = async (url = '/serverless') => {
         col: colName = 'test',
         block,
         method,
-        args,
+        args = [],
         argsSha256,
         argsObjectId,
-        dataFilter,
+        trim,
       } = body[nowEvent];
 
-      if (method.indexOf('drop') > -1 || method === 'deleteMany') {
-        return rep.status(400).send(new Error('can not use drop method oer deleteMany'));
+      if (!(canUseMethod as any)[method]) {
+        return rep.status(400).send(new Error(`can not user ${method} method`));
       }
       const col = db(dbName).collection(colName);
 
@@ -77,15 +89,15 @@ export const serverless = async (url = '/serverless') => {
 
       // 处理参数和限制权限
       if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-        const locker = dbLocker[colName];
-        if (locker) {
-          let lockerError: Error = new Error(`locker: master filter use ${JSON.stringify(locker)}`);
-          for (let i = 0; i < locker.length; i++) {
-            const key = locker[i];
+        const filter = dbLocker[colName] && dbLocker[colName].filter;
+        if (filter) {
+          let isLockerError = true;
+          for (let i = 0; i < filter.length; i++) {
+            const key = filter[i];
             if (typeof key === 'string') {
               const value = get(args[0], key);
               if (value) {
-                lockerError = null as any;
+                isLockerError = false;
                 break;
               }
             } else {
@@ -98,18 +110,22 @@ export const serverless = async (url = '/serverless') => {
                 }
               }
               if (isHaveValue === key.length) {
-                lockerError = null as any;
+                isLockerError = false;
                 break;
               }
             }
           }
-          if (lockerError) {
-            return rep.status(400).send(lockerError);
+          if (isLockerError) {
+            return rep.status(400).send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
           }
         }
       }
 
-      const data = await (col as any)[method](...args);
+      let data = await (col as any)[method](...args);
+
+      if (method === 'find') {
+        data = data.toArray();
+      }
 
       if (block) {
         if (!data) {
@@ -122,7 +138,6 @@ export const serverless = async (url = '/serverless') => {
           const value = block[key];
 
           if (get(data, key) !== block[key]) {
-            console.log(key, value, data.ops, get(data, key));
             blockError = new Error(`block: ${key} is not ${value}`);
             break;
           }
@@ -140,16 +155,17 @@ export const serverless = async (url = '/serverless') => {
       }
 
       if (!data) {
-        return rep.status(400).send({ msg: 'data void' });
+        return rep.status(200).send({ msg: 'data void' });
       }
       if (data) {
         const { connection, message, ...sendData } = data;
 
-        if (dataFilter) {
-          dataFilter.forEach(key => {
-            set(sendData, key, undefined);
-          });
-        }
+        // 提出不需要返回的
+        const allTrim = new Set([...(trim || []), ...((dbLocker[colName] && dbLocker[colName].trim) || [])]);
+
+        allTrim.forEach(key => {
+          set(sendData, key, undefined);
+        });
 
         return rep.status(200).send(sendData);
       }

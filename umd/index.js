@@ -40,16 +40,14 @@ const app = fastify({
 });
 app.register(fastifyCors);
 
-const defyan = 'plot_defyan_v0.0.1';
 const sha256 = (str) => {
     const obj = crypto.createHash('sha256');
-    obj.update(str + defyan);
+    obj.update(str + sha256.slat);
     return obj.digest('hex');
 };
+sha256.slat = 'lightning_slat_v0.0.1';
 
-let dbLocker = {
-    dev_user: ['token.$eq', ['username.$eq', 'password.$eq']],
-};
+let dbLocker = {};
 // interface ILocker {
 //   [key: string]: string[];
 // }
@@ -59,6 +57,17 @@ let dbLocker = {
 //   });
 // };
 
+const canUseMethod = {
+    insert: true,
+    insertMany: true,
+    insertOne: true,
+    update: true,
+    updateMany: true,
+    updateOne: true,
+    replaceOne: true,
+    find: true,
+    findOne: true,
+};
 const serverless = async (url = '/serverless') => {
     app.post(url, async (req, rep) => {
         if (!req.body || !req.body.length) {
@@ -76,9 +85,9 @@ const serverless = async (url = '/serverless') => {
             if (nowEvent === body.length - 1) {
                 isNeedSend = true;
             }
-            let { db: dbName = 'test', col: colName = 'test', block, method, args, argsSha256, argsObjectId, dataFilter, } = body[nowEvent];
-            if (method.indexOf('drop') > -1 || method === 'deleteMany') {
-                return rep.status(400).send(new Error('can not use drop method oer deleteMany'));
+            let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, trim, } = body[nowEvent];
+            if (!canUseMethod[method]) {
+                return rep.status(400).send(new Error(`can not user ${method} method`));
             }
             const col = db(dbName).collection(colName);
             if (argsSha256) {
@@ -99,15 +108,15 @@ const serverless = async (url = '/serverless') => {
             }
             // 处理参数和限制权限
             if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-                const locker = dbLocker[colName];
-                if (locker) {
-                    let lockerError = new Error(`locker: master filter use ${JSON.stringify(locker)}`);
-                    for (let i = 0; i < locker.length; i++) {
-                        const key = locker[i];
+                const filter = dbLocker[colName] && dbLocker[colName].filter;
+                if (filter) {
+                    let isLockerError = true;
+                    for (let i = 0; i < filter.length; i++) {
+                        const key = filter[i];
                         if (typeof key === 'string') {
                             const value = lodash.get(args[0], key);
                             if (value) {
-                                lockerError = null;
+                                isLockerError = false;
                                 break;
                             }
                         }
@@ -121,17 +130,20 @@ const serverless = async (url = '/serverless') => {
                                 }
                             }
                             if (isHaveValue === key.length) {
-                                lockerError = null;
+                                isLockerError = false;
                                 break;
                             }
                         }
                     }
-                    if (lockerError) {
-                        return rep.status(400).send(lockerError);
+                    if (isLockerError) {
+                        return rep.status(400).send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
                     }
                 }
             }
-            const data = await col[method](...args);
+            let data = await col[method](...args);
+            if (method === 'find') {
+                data = data.toArray();
+            }
             if (block) {
                 if (!data) {
                     return rep.status(400).send(new Error('block: data void'));
@@ -142,7 +154,6 @@ const serverless = async (url = '/serverless') => {
                     const key = keys[i];
                     const value = block[key];
                     if (lodash.get(data, key) !== block[key]) {
-                        console.log(key, value, data.ops, lodash.get(data, key));
                         blockError = new Error(`block: ${key} is not ${value}`);
                         break;
                     }
@@ -157,15 +168,15 @@ const serverless = async (url = '/serverless') => {
                 return;
             }
             if (!data) {
-                return rep.status(400).send({ msg: 'data void' });
+                return rep.status(200).send({ msg: 'data void' });
             }
             if (data) {
                 const { connection, message, ...sendData } = data;
-                if (dataFilter) {
-                    dataFilter.forEach(key => {
-                        lodash.set(sendData, key, undefined);
-                    });
-                }
+                // 提出不需要返回的
+                const allTrim = new Set([...(trim || []), ...((dbLocker[colName] && dbLocker[colName].trim) || [])]);
+                allTrim.forEach(key => {
+                    lodash.set(sendData, key, undefined);
+                });
                 return rep.status(200).send(sendData);
             }
         };
@@ -192,3 +203,4 @@ exports.controllersLoader = controllersLoader;
 exports.db = db;
 exports.dbLocker = dbLocker;
 exports.serverless = serverless;
+exports.sha256 = sha256;
