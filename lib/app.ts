@@ -6,4 +6,4 @@ export const app = fastify({
   disableRequestLogging: true,
 });
 
-app.register(fastifyCors);
+export const setCors = () => app.register(fastifyCors);

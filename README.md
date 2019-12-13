@@ -10,6 +10,9 @@ const lightning = require('lightning-base');
 const start = async () => {
   await lightning.db.init('mongodb://127.0.0.1:27017');
 
+  // 开发过程中可以取消跨域检测
+  lightning.setCors();
+
   // 自动加载文件名包含 .controller.js 的文件
   lightning.controllersLoader(resolve(__dirname, './controllers'), '.controller.js');
 
@@ -42,13 +45,18 @@ const lightning = require('lightning-base');
 const start = async () => {
   await lightning.db.init('mongodb://127.0.0.1:27017');
 
-  // 安全性：描述哪些表的update、delete操作需要校验的对象
+  // 安全性设置
   lightning.dbLocker = {
     user: {
+      // 用来记录该表必须校验的对象，如下数据，必须有token，或者有[username, password]
       filter: ['token.$eq', ['username.$eq', 'password.$eq']],
-      trim: ['token.$eq'],
+      // 用来剔除返回的数据, 提高安全性
+      trim: ['opt[0].password'],
     },
   };
+
+  // 开发过程中可以取消跨域检测，注意不要在生产中使用
+  lightning.setCors();
 
   // 启动 serverless 服务
   lightning.serverless();
@@ -117,7 +125,7 @@ lighting({
     console.log(err.toJSON());
   });
 
-// 我们看到，创建之后，密码也返回了；我们可以对返回值做一些删除:
+// 我们看到，创建之后，整个对象也返回了，我们为了节流，可以屏蔽ops:
 lighting({
   db: 'test',
   col: 'user',
@@ -125,8 +133,8 @@ lighting({
   argsSha256: ['0.password'], // 调整字段：args[0][password]
   argsObjectId: ['0._id'], // 调整字段：args[0][_id]
   args: [{ _id: '5df3d87143234867f3626f2f', username: 'dog', password: 'bbb', createAt: Date.now() }],
-  // 删除返回值的 ops[0].password 字段
-  trim: ['ops.0.password'],
+  // 删除返回值的 ops[0] 字段, 注意，前端设置 trim 仅适合减少数据流量，如要提高数据安全性，请设置 dbLocker.trim
+  trim: ['ops.0'],
 })
   .then(res => {
     console.log(res.data);
@@ -167,4 +175,4 @@ lighting({
   });
 ```
 
-示例演示了如何在客户端直接创建、修改、删除数据库的操作，并且演示了如何约定校验，以提高一部分安全性。
+示例演示了如何在客户端直接创建、修改、删除数据库的操作，并且演示了如何约定校验\剔除数据，以提高一部分安全性。

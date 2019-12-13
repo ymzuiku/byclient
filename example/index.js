@@ -1,32 +1,34 @@
-const plot = require('../umd');
+const lightning = require('../umd');
 // const { resolve } = require('path');
 
 const start = async () => {
-  await plot.db.init('mongodb://127.0.0.1:27017', 'test');
+  await lightning.db.init('mongodb://127.0.0.1:27017', 'test');
 
-  plot.dbLocker = {
+  lightning.dbLocker = {
     dev_test: {
       filter: ['$eq.user', '$eq.password'],
       trim: [],
     },
   };
 
-  plot.app.get('/ping', (req, rep) => {
+  lightning.setCors();
+
+  lightning.app.get('/ping', (req, rep) => {
     rep.send({ hello: 'world' });
   });
 
-  plot.app.post('/ping', (req, rep) => {
+  lightning.app.post('/ping', (req, rep) => {
     let { username, password } = req.body || {};
 
     rep.send({ hello: `${username}-${password}` });
   });
 
-  plot.serverless();
+  lightning.serverless();
 
   try {
-    await plot.app.listen(4010, '0.0.0.0');
+    await lightning.app.listen(4010, '0.0.0.0');
   } catch (error) {
-    plot.app.log.error(error);
+    lightning.app.log.error(error);
     process.exit(1);
   }
 };

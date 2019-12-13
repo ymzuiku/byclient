@@ -38,7 +38,7 @@ const app = fastify({
     logger: true,
     disableRequestLogging: true,
 });
-app.register(fastifyCors);
+const setCors = () => app.register(fastifyCors);
 
 const sha256 = (str) => {
     const obj = crypto.createHash('sha256');
@@ -203,4 +203,5 @@ exports.controllersLoader = controllersLoader;
 exports.db = db;
 exports.dbLocker = dbLocker;
 exports.serverless = serverless;
+exports.setCors = setCors;
 exports.sha256 = sha256;

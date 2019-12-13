@@ -1,6 +1,6 @@
 {
   "name": "lightning-base",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "main": "umd/index.js",
   "types": "umd/index.d.ts",
   "license": "MIT",
