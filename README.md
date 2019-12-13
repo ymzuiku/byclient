@@ -1,6 +1,6 @@
 # 旨在解放小型应用的后端工作量
 
-一个抽象了登录注册流程，及 serverless 的服务端，基于 `fastify`
+基于 `fastify` 的 serverless
 
 ## 普通服务
 
