@@ -34,7 +34,7 @@ const start = async () => {
 
   var response = await lightning({
     method: 'insertOne',
-    args: [{ name: 'dog', age: 10 }],
+    args: [{ name: 'dog你好', age: 10 }],
   });
 
   console.log(response);
