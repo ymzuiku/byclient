@@ -11,10 +11,9 @@ const start = async () => {
   };
 
   lightning.setCors();
-  const AES = lightning.AES;
-
-  AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
-  AES.config.iv = '304E9E87DB9C1C81'.slice(0, 16);
+  // const AES = lightning.AES;
+  // AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
+  // AES.config.iv = '304E9E87DB9C1C81'.slice(0, 16);
 
   lightning.app.get('/ping', (req, rep) => {
     rep.send({ hello: 'world' });

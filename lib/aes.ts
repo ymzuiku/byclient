@@ -11,7 +11,7 @@ const aesConfig = {
   key: '', // 密钥
   iv: '', // 偏移向量
   padding: 'PKCS7Padding', // 补全值
-  algorithm: 'aes-128-ecb', // 编码类型
+  algorithm: 'aes-128-cbc', // 编码类型
 };
 
 function getIv(iv: string, salt?: string) {
@@ -79,7 +79,6 @@ function aesDecode(params: IAESParams) {
   if (typeof data !== 'string') {
     data = JSON.stringify(data);
   }
-  console.log('1111111', data);
 
   if (json) {
     data = JSON.parse(data).code;
@@ -95,8 +94,6 @@ function aesDecode(params: IAESParams) {
   decipher.setAutoPadding(true);
   cipherChunks.push(decipher.update(data, 'base64', 'utf8'));
   cipherChunks.push(decipher.final('utf8'));
-
-  console.log('1111111', cipherChunks.join(''));
 
   return cipherChunks.join('');
 }

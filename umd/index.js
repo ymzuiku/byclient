@@ -7,6 +7,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 var mongodb = require('mongodb');
 var fastify = _interopDefault(require('fastify'));
 var fastifyCors = _interopDefault(require('fastify-cors'));
+var fastifyJWT = _interopDefault(require('fastify-jwt'));
 var lodash = require('lodash');
 var crypto = _interopDefault(require('crypto'));
 var fs = _interopDefault(require('fs-extra'));
@@ -39,6 +40,9 @@ const app = fastify({
     disableRequestLogging: true,
 });
 const setCors = () => app.register(fastifyCors);
+const setJwt = (secret) => app.register(fastifyJWT, {
+    secret,
+});
 
 const sha256 = (str, slat) => {
     const obj = crypto.createHash('sha256');
@@ -67,7 +71,7 @@ const aesConfig = {
     key: '',
     iv: '',
     padding: 'PKCS7Padding',
-    algorithm: 'aes-128-ecb',
+    algorithm: 'aes-128-cbc',
 };
 function getIv(iv, salt) {
     if (typeof salt === 'number') {
@@ -119,7 +123,6 @@ function aesDecode(params) {
     if (typeof data !== 'string') {
         data = JSON.stringify(data);
     }
-    console.log('1111111', data);
     if (json) {
         data = JSON.parse(data).code;
     }
@@ -132,7 +135,6 @@ function aesDecode(params) {
     decipher.setAutoPadding(true);
     cipherChunks.push(decipher.update(data, 'base64', 'utf8'));
     cipherChunks.push(decipher.final('utf8'));
-    console.log('1111111', cipherChunks.join(''));
     return cipherChunks.join('');
 }
 const AES = {
@@ -293,4 +295,5 @@ exports.db = db;
 exports.dbLocker = dbLocker;
 exports.serverless = serverless;
 exports.setCors = setCors;
+exports.setJwt = setJwt;
 exports.sha256 = sha256;

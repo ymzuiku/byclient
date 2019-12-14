@@ -31,7 +31,7 @@ function haveArgv(...args) {
 clearDir(pwd('umd'));
 
 const watchOptions = {
-  external: ['crypto', 'lodash', 'fastify', 'fastify-cors', 'mongodb', 'fs-extra', 'path', 'fs'],
+  external: ['crypto', 'fastify-jwt', 'lodash', 'fastify', 'fastify-cors', 'mongodb', 'fs-extra', 'path', 'fs'],
   input: './lib/index.ts',
   output: {
     file: './umd/index.js',
