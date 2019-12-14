@@ -1,9 +1,11 @@
 import { db } from './db';
-import { app, setCors, setJwt } from './app';
+import { app, setCors } from './app';
 import { serverless } from './serverless';
 import { dbLocker } from './dbLocker';
 import { sha256 } from './sha256';
-import { AES } from './aes';
+import { createRSA } from './createRSA';
+import { RSA } from './rsa';
+import './createRSA';
 import { controllersLoader } from './controllersLoader';
 
-export { AES, db, app, serverless, controllersLoader, dbLocker, sha256, setCors, setJwt };
+export { createRSA, RSA, db, app, serverless, controllersLoader, dbLocker, sha256, setCors };

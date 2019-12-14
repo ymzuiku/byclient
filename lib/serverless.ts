@@ -4,7 +4,7 @@ import { ObjectId } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
 import { dbLocker } from './dbLocker';
-import { AES } from './aes';
+import { RSA } from './rsa';
 
 interface IEvent {
   db?: string;
@@ -33,17 +33,13 @@ const canUseMethod = {
 
 export const serverless = async (url = '/lightning') => {
   app.post(url, async (req, rep) => {
-    if (!req.body) {
-      return rep.status(400).send(new Error('body is empty'));
+    if (!req.body || !req.body.code) {
+      return rep.status(400).send(new Error('body or body.code is empty'));
     }
 
-    const time = req.headers.time;
+    const realData = JSON.parse(RSA.decode(req.body.code));
 
-    if (AES.config.key) {
-      req.body = JSON.parse(AES.decode({ data: req.body, kvi: time, json: true }));
-    }
-
-    const body: IEvent[] = req.body.events ? req.body.events : [req.body];
+    const body: IEvent[] = realData.events ? realData.events : [realData];
 
     let nowEvent = 0;
 
@@ -70,12 +66,12 @@ export const serverless = async (url = '/lightning') => {
       } = body[nowEvent];
 
       if (!(canUseMethod as any)[method]) {
-        return rep.status(400).send(new Error(`can not user ${method} method`));
+        return rep.status(400).send(new Error(`can not use "${method}" method`));
       }
       const col = db(dbName).collection(colName);
 
       if (argsSha256) {
-        argsSha256.forEach(p => {
+        argsSha256.forEach((p: string) => {
           const value = get(args, p);
 
           if (value) {
@@ -85,7 +81,7 @@ export const serverless = async (url = '/lightning') => {
       }
 
       if (argsObjectId) {
-        argsObjectId.forEach(id => {
+        argsObjectId.forEach((id: string) => {
           const value = get(args, id);
 
           if (value) {
@@ -162,7 +158,7 @@ export const serverless = async (url = '/lightning') => {
       }
 
       if (!data) {
-        return rep.status(200).send(AES.encode({ data: { msg: 'data void' }, kvi: time, json: true }));
+        return rep.status(200).send({ code: RSA.encode({ mes: 'data is empty' }) });
       }
       if (data) {
         const { connection, message, ...sendData } = data;
@@ -174,7 +170,7 @@ export const serverless = async (url = '/lightning') => {
           set(sendData, key, undefined);
         });
 
-        return rep.status(200).send(AES.encode({ data: sendData, kvi: time, json: true }));
+        return rep.status(200).send({ code: RSA.encode(sendData) });
       }
     };
 
