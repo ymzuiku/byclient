@@ -67,7 +67,7 @@ const aesConfig = {
     key: '',
     iv: '',
     padding: 'PKCS7Padding',
-    algorithm: 'aes-128-cfb',
+    algorithm: 'aes-128-ecb',
 };
 function getIv(iv, salt) {
     if (typeof salt === 'number') {
@@ -132,6 +132,7 @@ function aesDecode(params) {
     decipher.setAutoPadding(true);
     cipherChunks.push(decipher.update(data, 'base64', 'utf8'));
     cipherChunks.push(decipher.final('utf8'));
+    console.log('1111111', cipherChunks.join(''));
     return cipherChunks.join('');
 }
 const AES = {
