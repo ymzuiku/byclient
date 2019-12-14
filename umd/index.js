@@ -40,12 +40,11 @@ const app = fastify({
 });
 const setCors = () => app.register(fastifyCors);
 
-const sha256 = (str) => {
+const sha256 = (str, slat) => {
     const obj = crypto.createHash('sha256');
-    obj.update(str + sha256.slat);
+    obj.update(str + (slat ? slat : ''));
     return obj.digest('hex');
 };
-sha256.slat = 'lightning_slat_v0.0.1';
 
 let dbLocker = {};
 // interface ILocker {
@@ -56,6 +55,89 @@ let dbLocker = {};
 //     dbLocker[key] = locker[key];
 //   });
 // };
+
+/**
+ * AES加密的配置
+ * 1.密钥
+ * 2.偏移向量
+ * 3.算法模式CBC
+ * 4.补全值
+ */
+const aesConfig = {
+    key: '',
+    iv: '',
+    padding: 'PKCS7Padding',
+    algorithm: 'aes-128-cbc',
+};
+function getIv(iv, salt) {
+    if (typeof salt === 'number') {
+        salt = String(salt);
+    }
+    if (!salt) {
+        return iv;
+    }
+    return iv.slice(0, 16 - 5) + salt.slice(salt.length - 5);
+}
+/**
+ * AES_128_CBC 加密
+ * 128位
+ * return base64
+ * json：将密码放入 code 中
+ */
+function aesEncode(params) {
+    let { data, kvi, json, focusKey } = params;
+    if (!aesConfig.key || !data) {
+        return data;
+    }
+    if (typeof data !== 'string') {
+        data = JSON.stringify(data);
+    }
+    const key = focusKey || AES.config.key;
+    const iv = getIv(aesConfig.iv, kvi);
+    const algorithm = aesConfig.algorithm;
+    // let padding = AES_conf.padding;
+    const cipherChunks = [];
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    cipher.setAutoPadding(true);
+    cipherChunks.push(cipher.update(data, 'utf8', 'base64'));
+    cipherChunks.push(cipher.final('base64'));
+    if (json) {
+        return JSON.stringify({ code: cipherChunks.join('') });
+    }
+    return cipherChunks.join('');
+}
+/**
+ * 解密
+ * return utf8
+ * json：从json中的 code 获取数据
+ */
+function aesDecode(params) {
+    let { data, kvi, json, focusKey } = params;
+    if (!aesConfig.key || !data) {
+        return data;
+    }
+    if (typeof data !== 'string') {
+        data = JSON.stringify(data);
+    }
+    if (json) {
+        data = JSON.parse(data).code;
+    }
+    const key = focusKey || AES.config.key;
+    const iv = getIv(aesConfig.iv, kvi);
+    const algorithm = aesConfig.algorithm;
+    // let padding = AES_conf.padding;
+    const cipherChunks = [];
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    decipher.setAutoPadding(true);
+    cipherChunks.push(decipher.update(data, 'base64', 'utf8'));
+    cipherChunks.push(decipher.final('utf8'));
+    return cipherChunks.join('');
+}
+const AES = {
+    config: aesConfig,
+    decode: aesDecode,
+    encode: aesEncode,
+};
 
 const canUseMethod = {
     insert: true,
@@ -68,12 +150,16 @@ const canUseMethod = {
     find: true,
     findOne: true,
 };
-const serverless = async (url = '/serverless') => {
+const serverless = async (url = '/lightning') => {
     app.post(url, async (req, rep) => {
-        if (!req.body || !req.body.length) {
+        if (!req.body) {
             return rep.status(400).send(new Error('body is empty'));
         }
-        const body = req.body;
+        const time = req.headers.time;
+        if (AES.config.key) {
+            req.body = JSON.parse(AES.decode({ data: req.body, kvi: time, json: true }));
+        }
+        const body = req.body.events ? req.body.events : [req.body];
         let nowEvent = 0;
         const recall = async () => {
             // 如果 event 溢出
@@ -168,7 +254,7 @@ const serverless = async (url = '/serverless') => {
                 return;
             }
             if (!data) {
-                return rep.status(200).send({ msg: 'data void' });
+                return rep.status(200).send(AES.encode({ data: { msg: 'data void' }, kvi: time, json: true }));
             }
             if (data) {
                 const { connection, message, ...sendData } = data;
@@ -177,7 +263,7 @@ const serverless = async (url = '/serverless') => {
                 allTrim.forEach(key => {
                     lodash.set(sendData, key, undefined);
                 });
-                return rep.status(200).send(sendData);
+                return rep.status(200).send(AES.encode({ data: sendData, kvi: time, json: true }));
             }
         };
         await recall();
@@ -198,6 +284,7 @@ const controllersLoader = (dir, indexOf) => {
     });
 };
 
+exports.AES = AES;
 exports.app = app;
 exports.controllersLoader = controllersLoader;
 exports.db = db;

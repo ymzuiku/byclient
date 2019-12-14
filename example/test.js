@@ -1,41 +1,60 @@
 const Axios = require('axios').default;
+const { AES } = require('../umd');
 
-const axios = Axios.create({
-  baseURL: 'http://127.0.0.1:4010',
-});
+AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
+AES.config.iv = '304E9E87DB9C1C81'.slice(0, 16);
 
-const lighting = (...args) => axios.post('/serverless', [...args]);
+const start = async () => {
+  const lightning = async data => {
+    const time = Date.now();
 
-// lighting({
-//   method: 'insertOne',
-//   argsSha256: ['0.password'],
-//   argsObjectId: ['0.id'],
-//   args: [{ name: 'dog', age: '11', password: 'bbb' }],
-//   block: {
-//     'ops.0.age': '11',
-//   },
-//   trim: ['ops.0.password'],
-// })
-//   .then(res => {
-//     console.log(res.data);
-//   })
-//   .catch(err => {
-//     console.log(err.toJSON());
-//   });
+    return new Promise(cb => {
+      Axios.post('http://127.0.0.1:4010/lightning', AES.encode({ data, kvi: time, json: true }), {
+        headers: { 'content-type': 'application/json', time },
+      })
+        .then(res => {
+          cb(JSON.parse(AES.decode({ data: res.data, kvi: time, json: true })));
+        })
+        .catch(err => cb(err.response.data));
+    });
+  };
 
-// lighting({
-//   col: 'dev_user',
-//   method: 'updateOne',
-//   args: [{ token: { $eq: 'aa' } }, { $set: { createAt: Date.now() } }],
-// }).then(res => {
-//   console.log(res.data);
-// });
+  // lightning({
+  //   method: 'insertOne',
+  //   argsSha256: ['0.password'],
+  //   // argsObjectId: ['0.id'],
+  //   args: [{ name: 'dog', age: '11', password: 'bbb' }],
+  // })
+  //   .then(res => {
+  //     console.log(res.data);
+  //   })
+  //   .catch(err => {
+  //     console.log(err.response.data);
+  //   });
 
-lighting({
-  col: 'dev_user',
-  method: 'findOne',
-  args: [{}, null],
-  // args: [{ token: { $eq: 'aa' } }, { $set: { createAt: Date.now() } }],
-}).then(res => {
-  console.log(res.data);
-});
+  var response = await lightning({
+    method: 'insertOne',
+    args: [{ name: 'dog', age: 10 }],
+  });
+
+  console.log(response);
+
+  // lightning({
+  //   col: 'dev_user',
+  //   method: 'updateOne',
+  //   args: [{ token: { $eq: 'aa' } }, { $set: { createAt: Date.now() } }],
+  // }).then(res => {
+  //   console.log(res.data);
+  // });
+
+  // lightning({
+  //   col: 'dev_user',
+  //   method: 'insertOne',
+  //   // args: [{}, null],
+  //   // args: [{ token: { $eq: 'aa' } }, { $set: { createAt: Date.now() } }],
+  // }).then(res => {
+  //   console.log(res.data);
+  // });
+};
+
+start();

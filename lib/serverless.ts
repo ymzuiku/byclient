@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
 import { dbLocker } from './dbLocker';
+import { AES } from './aes';
 
 interface IEvent {
   db?: string;
@@ -30,13 +31,19 @@ const canUseMethod = {
   findOne: true,
 };
 
-export const serverless = async (url = '/serverless') => {
+export const serverless = async (url = '/lightning') => {
   app.post(url, async (req, rep) => {
-    if (!req.body || !req.body.length) {
+    if (!req.body) {
       return rep.status(400).send(new Error('body is empty'));
     }
 
-    const body: IEvent[] = req.body;
+    const time = req.headers.time;
+
+    if (AES.config.key) {
+      req.body = JSON.parse(AES.decode({ data: req.body, kvi: time, json: true }));
+    }
+
+    const body: IEvent[] = req.body.events ? req.body.events : [req.body];
 
     let nowEvent = 0;
 
@@ -155,7 +162,7 @@ export const serverless = async (url = '/serverless') => {
       }
 
       if (!data) {
-        return rep.status(200).send({ msg: 'data void' });
+        return rep.status(200).send(AES.encode({ data: { msg: 'data void' }, kvi: time, json: true }));
       }
       if (data) {
         const { connection, message, ...sendData } = data;
@@ -167,7 +174,7 @@ export const serverless = async (url = '/serverless') => {
           set(sendData, key, undefined);
         });
 
-        return rep.status(200).send(sendData);
+        return rep.status(200).send(AES.encode({ data: sendData, kvi: time, json: true }));
       }
     };
 

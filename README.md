@@ -61,6 +61,10 @@ const start = async () => {
   // 启动 serverless 服务
   lightning.serverless();
 
+  // 使用 AES 加密请求
+  lightning.AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
+  lightning.AES.config.iv = '304E9E87DB9C1C81'.slice(0, 16);
+
   try {
     await lightning.app.listen(4010, '0.0.0.0');
   } catch (error) {
@@ -175,4 +179,4 @@ lighting({
   });
 ```
 
-示例演示了如何在客户端直接创建、修改、删除数据库的操作，并且演示了如何约定校验\剔除数据，以提高一部分安全性。
+示例演示了如何在客户端直接创建、修改、删除数据库的操作，并且演示了如何约定校验\剔除数据，添加 ASE 加密，以提高一部分安全性。

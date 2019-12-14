@@ -1,5 +1,4 @@
 const lightning = require('../umd');
-// const { resolve } = require('path');
 
 const start = async () => {
   await lightning.db.init('mongodb://127.0.0.1:27017', 'test');
@@ -12,6 +11,10 @@ const start = async () => {
   };
 
   lightning.setCors();
+  const AES = lightning.AES;
+
+  AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
+  AES.config.iv = '304E9E87DB9C1C81'.slice(0, 16);
 
   lightning.app.get('/ping', (req, rep) => {
     rep.send({ hello: 'world' });
