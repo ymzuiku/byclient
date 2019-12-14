@@ -67,7 +67,7 @@ const aesConfig = {
     key: '',
     iv: '',
     padding: 'PKCS7Padding',
-    algorithm: 'aes-128-cbc',
+    algorithm: 'aes-128-cfb',
 };
 function getIv(iv, salt) {
     if (typeof salt === 'number') {
@@ -116,6 +116,7 @@ function aesDecode(params) {
     if (!aesConfig.key || !data) {
         return data;
     }
+    console.log(data);
     if (typeof data !== 'string') {
         data = JSON.stringify(data);
     }

@@ -11,7 +11,7 @@ const aesConfig = {
   key: '', // 密钥
   iv: '', // 偏移向量
   padding: 'PKCS7Padding', // 补全值
-  algorithm: 'aes-128-cbc', // 编码类型
+  algorithm: 'aes-128-cfb', // 编码类型
 };
 
 function getIv(iv: string, salt?: string) {
@@ -75,6 +75,7 @@ function aesDecode(params: IAESParams) {
   if (!aesConfig.key || !data) {
     return data;
   }
+  console.log(data);
   if (typeof data !== 'string') {
     data = JSON.stringify(data);
   }
