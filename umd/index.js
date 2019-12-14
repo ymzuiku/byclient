@@ -116,10 +116,10 @@ function aesDecode(params) {
     if (!aesConfig.key || !data) {
         return data;
     }
-    console.log(data);
     if (typeof data !== 'string') {
         data = JSON.stringify(data);
     }
+    console.log('1111111', data);
     if (json) {
         data = JSON.parse(data).code;
     }
