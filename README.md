@@ -58,12 +58,25 @@ const start = async () => {
   // 开发过程中可以取消跨域检测，注意不要在生产中使用
   lightning.setCors();
 
+  // 开启RSA加密，交换客户端和服务端的公钥
+  lightning.RSA.init(`
+-----BEGIN PUBLIC KEY-----
+MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJcEhpW60HpyTQ4ALikyoYkmqb40uTVd
+5BBWf8jHvXmsP+jv4UgMZc9tbSxBC6ug3FsiFaHzLT+6cfSq+HIsFxkCAwEAAQ==
+-----END PUBLIC KEY-----
+-----BEGIN RSA PRIVATE KEY-----
+MIIBOQIBAAJBAI6ZEQnI7LICgjpmYtwpRhBa5vIVPHTS6VVHE/WVoK6cduwwJyNX
+7PYgFHT9CrKJVdd99XmqN2TbNRaFkTetaA0CAwEAAQJABA233UZX7CuEFjLo5odJ
+1Zcv73vJDy0bsu/lUlrhiXUgJm7Ellr9B6hE6UO4Qoy01L7ufaImzRsfIc9JkJau
+JQIhAOSs0IyWn1tbOcwqLfkRFRd1h5vg6h340BRdK59y0kqLAiEAn6MlebDrOJw7
+iaCa6tffyRuAjgK+qlttWGK5QeXNIscCIElA2uXOcmoPhSpT8LoysLD9I13Z5OWJ
+CQ8c8ZZ4b8kVAiBuKH6rwtIOdoD/L7y3YdAjTr8fP/WiSQTjgPyl5JXx8QIgbmsI
+L5/FGbQ9KqH6LREFOmq6Iz8PFZGGD+Pe1u/MgEA=
+-----END RSA PRIVATE KEY-----
+`);
+
   // 启动 serverless 服务
   lightning.serverless();
-
-  // 使用 AES 加密请求
-  lightning.AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
-  lightning.AES.config.iv = '304E9E87DB9C1C81'.slice(0, 16);
 
   try {
     await lightning.app.listen(4010, '0.0.0.0');
@@ -179,4 +192,4 @@ lighting({
   });
 ```
 
-示例演示了如何在客户端直接创建、修改、删除数据库的操作，并且演示了如何约定校验\剔除数据，添加 ASE 加密，以提高一部分安全性。
+示例演示了如何在客户端直接创建、修改、删除数据库的操作，并且演示了如何约定校验\剔除数据、添加非对称加密，以提高一部分安全性。
