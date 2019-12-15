@@ -226,7 +226,7 @@ const serverless = async (url = '/lightning') => {
     });
 };
 
-const controllersLoader = (dir, indexOf) => {
+const controllersLoader = (dir, indexOf, params) => {
     const files = fs.readdirSync(dir);
     files.forEach((file) => {
         const nextDir = path.resolve(dir, file);
@@ -235,7 +235,10 @@ const controllersLoader = (dir, indexOf) => {
             controllersLoader(nextDir, indexOf);
         }
         else if (file.indexOf(indexOf) > 0) {
-            require(nextDir);
+            const ctrl = require(nextDir);
+            if (typeof ctrl === 'function') {
+                ctrl(params);
+            }
         }
     });
 };

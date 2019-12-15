@@ -1,1 +1,1 @@
-export declare const controllersLoader: (dir: string, indexOf: string) => void;
+export declare const controllersLoader: (dir: string, indexOf: string, params?: any) => void;
