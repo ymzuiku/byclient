@@ -10,6 +10,7 @@ const start = async () => {
     },
   };
 
+
   lightning.setCors();
   // const AES = lightning.AES;
   // AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
@@ -55,7 +56,7 @@ xRNJjNFCbTEyKb65ydGFYtcwzcX+AUcLlOb/n7G+
     rep.send({ hello: `${username}-${password}` });
   });
 
-  lightning.serverless();
+  lightning.serverless('/less', {checkKey:'dogcat', checkTime: 60*1000*15});
 
   try {
     await lightning.app.listen(4010, '0.0.0.0');

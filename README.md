@@ -76,7 +76,7 @@ L5/FGbQ9KqH6LREFOmq6Iz8PFZGGD+Pe1u/MgEA=
 `);
 
   // 启动 serverless 服务
-  lightning.serverless();
+  lightning.serverless('/less');
 
   try {
     await lightning.app.listen(4010, '0.0.0.0');
@@ -98,7 +98,7 @@ const axios = Axios.create({
   baseURL: 'http://127.0.0.1:4010',
 });
 
-const lighting = (...args) => axios.post('/serverless', [...args]);
+const lighting = (...args) => axios.post('/less', [...args]);
 
 // 发起此请求，服务端执行 db.collection[method](...args):
 lighting({

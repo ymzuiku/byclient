@@ -109,12 +109,25 @@ const canUseMethod = {
     find: true,
     findOne: true,
 };
-const serverless = async (url = '/lightning') => {
+const serverless = async (url = '/less', options) => {
     app.post(url, async (req, rep) => {
         if (!req.body || !req.body.code) {
             return rep.status(400).send(new Error('body or body.code is empty'));
         }
         const realData = JSON.parse(RSA.decode(req.body.code));
+        if (options) {
+            if (options.checkTime) {
+                const nowTime = Date.now();
+                if (realData._checkTime < nowTime - options.checkTime || realData._checkTime > nowTime + options.checkTime) {
+                    return rep.status(400).send(new Error('client undefined error'));
+                }
+            }
+            if (options.checkKey) {
+                if (realData._checkKey !== options.checkKey) {
+                    return rep.status(400).send(new Error('client undefined error'));
+                }
+            }
+        }
         const body = realData.events ? realData.events : [realData];
         let nowEvent = 0;
         const recall = async () => {
