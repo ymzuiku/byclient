@@ -51,6 +51,10 @@ const start = async () => {
   // 启动 serverless 服务
   lightning.serverless({
     url: '/less',
+    // 若设定，会限定每个请求体的有效时间，此例子为前后不超过15分钟
+    checkTime: 1000 * 60 * 15,
+    // 若设定，会校验一个key，只有key正确时才有权限操作
+    checkKey: '123456',
     // 拦截某些数据库的操作
     blockDb: new Set(['pay']),
     // 拦截某些表的操作
@@ -64,7 +68,7 @@ const start = async () => {
         remove: ['ops.0.password'],
       },
     },
-    // 开启RSA加密，交换客户端和服务端的公钥
+    // 若设置,开启RSA加密，请提前交换客户端和服务端的公钥
     RSAKey: `
 -----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJcEhpW60HpyTQ4ALikyoYkmqb40uTVd
@@ -102,7 +106,18 @@ const axios = Axios.create({
   baseURL: 'http://127.0.0.1:4010',
 });
 
-const lighting = (...args) => axios.post('/less', [...args]);
+const lighting = body =>
+  axios.post('/less', {
+    // 若后端设置了 RSAKey, 放在code内的数据都需要使用非对称加密进行处理，返回值也需要使用 RSA 解密，请提前替换好前后端的公钥
+    // lightning-axios 库，已经帮我们处理了web端的相关请求，也可以直接使用
+    code: {
+      ...body,
+      // 若后端设置了 checkTime， 前端就必须传递当前时间
+      _checkTime: Date.now(),
+      // 若后端设置了 checkKey, 前端就必须传递预定密钥
+      _checkKey: '123456',
+    },
+  });
 
 // 发起此请求，服务端执行 db.collection[method](...args):
 lighting({
@@ -124,6 +139,7 @@ lighting({
 //   insertMany: true,
 //   insertOne: true,
 //   update: true,
+//   deleteOne: true,
 //   updateMany: true,
 //   updateOne: true,
 //   replaceOne: true,
