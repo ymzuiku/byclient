@@ -5,12 +5,12 @@ import { set, get } from 'lodash';
 import { sha256 } from './sha256';
 import { createRSA } from './createRSA';
 
-interface ICheckCol {
+interface IImpose {
   [key: string]: {
     /** 操作时必须设置的filter */
     filter: any[];
     /** 返回时默认修剪的对象 */
-    trim: string[];
+    remove: string[];
   };
 }
 
@@ -24,7 +24,7 @@ interface IEvent {
   argsSha256?: string[];
   // 用来标记需要转化为 ObjectId 的args路径
   argsObjectId?: string[];
-  trim?: string[];
+  remove?: string[];
 }
 
 const canUseMethod = new Set([
@@ -44,14 +44,14 @@ interface IOptions {
   url: string;
   checkTime?: number;
   checkKey?: string;
-  checkFilter?: ICheckCol;
+  impose?: IImpose;
   blockDb?: Set<string>;
   blockCol?: Set<string>;
   RSAKey?: string;
 }
 
 export const serverless = async (options: IOptions) => {
-  const { url = '/less', checkKey, checkTime, checkFilter = {}, blockDb, blockCol, RSAKey } = options;
+  const { url = '/less', checkKey, checkTime, impose = {}, blockDb, blockCol, RSAKey } = options;
   let RSA = createRSA();
 
   if (RSAKey) {
@@ -100,7 +100,7 @@ export const serverless = async (options: IOptions) => {
         args = [],
         argsSha256,
         argsObjectId,
-        trim,
+        remove,
       } = body[nowEvent];
 
       if (blockDb && blockDb.has(dbName)) {
@@ -138,7 +138,7 @@ export const serverless = async (options: IOptions) => {
 
       // 处理参数和限制权限
       if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-        const filter = checkFilter[colName] && checkFilter[colName].filter;
+        const filter = impose[colName] && impose[colName].filter;
         if (filter) {
           let isLockerError = true;
           for (let i = 0; i < filter.length; i++) {
@@ -209,7 +209,7 @@ export const serverless = async (options: IOptions) => {
         const { connection, message, ...sendData } = data;
 
         // 提出不需要返回的
-        const allTrim = new Set([...(trim || []), ...((checkFilter[colName] && checkFilter[colName].trim) || [])]);
+        const allTrim = new Set([...(remove || []), ...((impose[colName] && impose[colName].remove) || [])]);
 
         allTrim.forEach(key => {
           set(sendData, key, undefined);

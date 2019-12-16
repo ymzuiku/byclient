@@ -100,7 +100,7 @@ const canUseMethod = new Set([
     'findOne',
 ]);
 const serverless = async (options) => {
-    const { url = '/less', checkKey, checkTime, checkFilter = {}, blockDb, blockCol, RSAKey } = options;
+    const { url = '/less', checkKey, checkTime, impose = {}, blockDb, blockCol, RSAKey } = options;
     let RSA = createRSA();
     if (RSAKey) {
         RSA.init(RSAKey);
@@ -133,7 +133,7 @@ const serverless = async (options) => {
             if (nowEvent === body.length - 1) {
                 isNeedSend = true;
             }
-            let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, trim, } = body[nowEvent];
+            let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, remove, } = body[nowEvent];
             if (blockDb && blockDb.has(dbName)) {
                 return rep.status(400).send(new Error('no permission!'));
             }
@@ -162,7 +162,7 @@ const serverless = async (options) => {
             }
             // 处理参数和限制权限
             if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-                const filter = checkFilter[colName] && checkFilter[colName].filter;
+                const filter = impose[colName] && impose[colName].filter;
                 if (filter) {
                     let isLockerError = true;
                     for (let i = 0; i < filter.length; i++) {
@@ -227,7 +227,7 @@ const serverless = async (options) => {
             if (data) {
                 const { connection, message, ...sendData } = data;
                 // 提出不需要返回的
-                const allTrim = new Set([...(trim || []), ...((checkFilter[colName] && checkFilter[colName].trim) || [])]);
+                const allTrim = new Set([...(remove || []), ...((impose[colName] && impose[colName].remove) || [])]);
                 allTrim.forEach(key => {
                     lodash.set(sendData, key, undefined);
                 });

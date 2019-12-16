@@ -4,9 +4,6 @@ const start = async () => {
   await lightning.db.init('mongodb://127.0.0.1:27017', 'test');
 
   lightning.setCors();
-  // const AES = lightning.AES;
-  // AES.config.key = 'D7E1499A578490DF'.slice(0, 16);
-  // AES.config.iv = '304E9E87DB9C1C81'.slice(0, 16);
 
   lightning.app.get('/rsa/client', (req, rep) => {
     rep.send(`
@@ -26,19 +23,13 @@ xRNJjNFCbTEyKb65ydGFYtcwzcX+AUcLlOb/n7G+
     `);
   });
 
-  lightning.app.post('/ping', (req, rep) => {
-    let { username, password } = req.body || {};
-
-    rep.send({ hello: `${username}-${password}` });
-  });
-
   lightning.serverless({
     url: '/less',
     checkKey: '123',
     checkTime: 60 * 1000 * 15,
     checkFilter: {
       dev_test: {
-        filter: ['$eq.user', '$eq.password'],
+        filter: [['$eq.user', '$eq.password'], '$eq:token'],
         trim: [],
       },
     },

@@ -45,22 +45,25 @@ const lightning = require('lightning-base');
 const start = async () => {
   await lightning.db.init('mongodb://127.0.0.1:27017');
 
-  // 安全性设置
-  lightning.dbLocker = {
-    user: {
-      // 用来记录该表必须校验的对象，如下数据，必须有token，或者有[username, password]
-      filter: ['token.$eq', ['username.$eq', 'password.$eq']],
-      // 用来剔除返回的数据, 提高安全性
-      trim: ['opt[0].password'],
-    },
-  };
-
   // 开发过程中可以取消跨域检测，注意不要在生产中使用
   lightning.setCors();
 
   // 启动 serverless 服务
   lightning.serverless({
     url: '/less',
+    // 拦截某些数据库的操作
+    blockDb: new Set(['pay']),
+    // 拦截某些表的操作
+    blockDb: new Set(['pay']),
+    // 针对某些表的一些限制, 提高安全性
+    impose: {
+      user: {
+        // 更新、删除某些表的内容时，操作必须添加的 filter
+        filter: [['$eq.user', '$eq.password'], '$eq:token'],
+        // 移除某些数据
+        remove: ['ops.0.password'],
+      },
+    },
     // 开启RSA加密，交换客户端和服务端的公钥
     RSAKey: `
 -----BEGIN PUBLIC KEY-----
@@ -151,8 +154,8 @@ lighting({
   argsSha256: ['0.password'], // 调整字段：args[0][password]
   argsObjectId: ['0._id'], // 调整字段：args[0][_id]
   args: [{ _id: '5df3d87143234867f3626f2f', username: 'dog', password: 'bbb', createAt: Date.now() }],
-  // 删除返回值的 ops[0] 字段, 注意，前端设置 trim 仅适合减少数据流量，如要提高数据安全性，请设置 dbLocker.trim
-  trim: ['ops.0'],
+  // 删除返回值的 ops[0] 字段, 注意，前端设置 remove 仅适合减少数据流量，如要提高数据安全性，请在后端设置 impose.remove
+  remove: ['ops.0'],
 })
   .then(res => {
     console.log(res.data);
