@@ -5,16 +5,16 @@
 ## serverless
 
 ```js
-const lightning = require('lightning-base');
+const byclient = require('byclient');
 
 const start = async () => {
-  await lightning.db.init('mongodb://127.0.0.1:27017');
+  await byclient.db.init('mongodb://127.0.0.1:27017');
 
   // 开发过程中可以取消跨域检测，注意不要在生产中使用
-  lightning.setCors();
+  byclient.setCors();
 
   // 启动 serverless 服务
-  lightning.serverless({
+  byclient.serverless({
     url: '/less',
     // 若设定，会限定每个请求体的有效时间，此例子为前后不超过15分钟
     checkTime: 1000 * 60 * 15,
@@ -35,14 +35,14 @@ const start = async () => {
     },
     // 开启 RSA 加密，自动配置RSA加密方案, 此密钥请设置较长且保留好
     // 若前后端要更新 RSA 密钥，请更新这个密钥，并且重启服务器
-    // 开启 autoRSA，之后，可以通过访问服务 /lightning/rsa?name=the-password 拿到客户端密钥，此服务若失败5次，需要间隔1小时方可尝试
+    // 开启 autoRSA，之后，可以通过访问服务 /byclient/rsa?name=the-password 拿到客户端密钥，此服务若失败5次，需要间隔1小时方可尝试
     autoRSA: 'the-password',
   });
 
   try {
-    await lightning.app.listen(4010, '0.0.0.0');
+    await byclient.app.listen(4010, '0.0.0.0');
   } catch (error) {
-    lightning.app.log.error(error);
+    byclient.app.log.error(error);
     process.exit(1);
   }
 };
@@ -54,7 +54,7 @@ start();
 
 我们以开启了 autoRSA 加密方案为例，首先启动服务，然后访问以下链接拿到 client 的 RSA 密钥：
 
-`http://0.0.0.0:4010/lightning/rsa?name=the-password`
+`http://0.0.0.0:4010/byclient/rsa?name=the-password`
 
 接下来先为客户端创建一个请求方法 client:
 
@@ -192,34 +192,34 @@ client({
 
 ## 普通服务
 
-lightning-base 亦可以快速搭建普通的 web 服务：
+byclient 亦可以快速搭建普通的 web 服务：
 
 ```js
-const lightning = require('lightning-base');
+const byclient = require('byclient');
 
 const start = async () => {
-  await lightning.db.init('mongodb://127.0.0.1:27017');
+  await byclient.db.init('mongodb://127.0.0.1:27017');
 
   // 开发过程中可以取消跨域检测
-  lightning.setCors();
+  byclient.setCors();
 
   // 自动加载文件名包含 .controller.js 的文件
-  lightning.controllersLoader(resolve(__dirname, './controllers'), '.controller.js');
+  byclient.controllersLoader(resolve(__dirname, './controllers'), '.controller.js');
 
-  lightning.app.get('/ping', (req, rep) => {
+  byclient.app.get('/ping', (req, rep) => {
     rep.send({ hello: 'world' });
   });
 
-  lightning.app.post('/ping', (req, rep) => {
+  byclient.app.post('/ping', (req, rep) => {
     let { username, password } = req.body || {};
 
     rep.send({ hello: `${username}-${password}` });
   });
 
   try {
-    await lightning.app.listen(4010, '0.0.0.0');
+    await byclient.app.listen(4010, '0.0.0.0');
   } catch (error) {
-    lightning.app.log.error(error);
+    byclient.app.log.error(error);
     process.exit(1);
   }
 };

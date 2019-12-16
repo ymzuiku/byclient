@@ -108,14 +108,14 @@ const canUseMethod = new Set([
 ]);
 const serverless = async (options) => {
     const { url = '/less', checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, autoRSA, RSAKey, } = options;
-    const blockDb = new Set(['lightning', ...(theBlockDb || [])]);
+    const blockDb = new Set(['byclient', ...(theBlockDb || [])]);
     const blockCol = new Set([...(theBlockCol || [])]);
     let RSA = createRSA();
     if (RSAKey) {
         RSA.init(RSAKey);
     }
     else if (autoRSA) {
-        const col = db('lightning').collection('rsa');
+        const col = db('byclient').collection('rsa');
         const old = await col.findOne({ name: { $eq: autoRSA } });
         let clientKey = '';
         if (!old) {
@@ -132,7 +132,7 @@ const serverless = async (options) => {
             RSA.init(old.server);
         }
         let errorGetAutoRSANumber = 0;
-        app.get('/lightning/rsa', async (req, rep) => {
+        app.get('/byclient/rsa', async (req, rep) => {
             if (errorGetAutoRSANumber >= 5) {
                 return rep.send('error times');
             }

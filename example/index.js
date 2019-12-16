@@ -1,11 +1,11 @@
-const lightning = require('../umd');
+const byclient = require('../umd');
 
 const start = async () => {
-  await lightning.db.init('mongodb://127.0.0.1:27017', 'test');
+  await byclient.db.init('mongodb://127.0.0.1:27017', 'test');
 
-  lightning.setCors();
+  byclient.setCors();
 
-  await lightning.serverless({
+  await byclient.serverless({
     url: '/less',
     checkKey: '123456',
     checkTime: 60 * 1000 * 15,
@@ -19,9 +19,9 @@ const start = async () => {
   });
 
   try {
-    await lightning.app.listen(4010, '0.0.0.0');
+    await byclient.app.listen(4010, '0.0.0.0');
   } catch (error) {
-    lightning.app.log.error(error);
+    byclient.app.log.error(error);
     process.exit(1);
   }
 };

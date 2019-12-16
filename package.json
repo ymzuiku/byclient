@@ -1,6 +1,6 @@
 {
-  "name": "lightning-base",
-  "version": "0.3.1",
+  "name": "byclient",
+  "version": "0.1.1",
   "main": "umd/index.js",
   "types": "umd/index.d.ts",
   "license": "MIT",
@@ -8,7 +8,7 @@
     "lib": "node rollup.js",
     "start": "node rollup.js -w & nodemon example/index.js"
   },
-  "repository": "ymzuiku/lightning-base",
+  "repository": "ymzuiku/byclient",
   "author": "pillar <ymblender@gmail.com>",
   "dependencies": {
     "@types/fs-extra": "^8.0.1",
