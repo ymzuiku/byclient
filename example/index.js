@@ -25,7 +25,7 @@ xRNJjNFCbTEyKb65ydGFYtcwzcX+AUcLlOb/n7G+
 
   lightning.serverless({
     url: '/less',
-    checkKey: '123',
+    checkKey: '123456',
     checkTime: 60 * 1000 * 15,
     checkFilter: {
       dev_test: {

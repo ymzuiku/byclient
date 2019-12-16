@@ -113,12 +113,12 @@ const serverless = async (options) => {
         if (checkTime) {
             const nowTime = Date.now();
             if (realData._checkTime < nowTime - checkTime || realData._checkTime > nowTime + checkTime) {
-                return rep.status(400).send(new Error('no permission!'));
+                return rep.status(400).send(new Error('no permission[1]!'));
             }
         }
         if (checkKey) {
             if (realData._checkKey !== checkKey) {
-                return rep.status(400).send(new Error('no permission!'));
+                return rep.status(400).send(new Error('no permission[2]!'));
             }
         }
         const body = realData.events ? realData.events : [realData];
@@ -135,10 +135,10 @@ const serverless = async (options) => {
             }
             let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, remove, } = body[nowEvent];
             if (blockDb && blockDb.has(dbName)) {
-                return rep.status(400).send(new Error('no permission!'));
+                return rep.status(400).send(new Error('no permission[3]!'));
             }
             if (blockCol && blockCol.has(colName)) {
-                return rep.status(400).send(new Error('no permission!'));
+                return rep.status(400).send(new Error('no permission[4]!'));
             }
             if (!canUseMethod.has(method)) {
                 return rep.status(400).send(new Error(`can not use "${method}" method`));
