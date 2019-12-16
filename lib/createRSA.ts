@@ -6,7 +6,12 @@ export interface IRSA {
   init: (keyData: string) => void;
   decode: (text: string) => string;
   encode: (data: any) => string;
-  createKeys: () => string;
+  createKeys: () => {
+    client: string;
+    server: string;
+    baseClient: string;
+    baseServer: string;
+  };
 }
 
 export const createRSA = () => {
@@ -25,11 +30,20 @@ export const createRSA = () => {
       RSA.priateKey.setOptions({ encryptionScheme: 'pkcs1' });
     },
     createKeys: () => {
-      const key = new NodeRSA({ b: 512 });
-      let out = '';
-      out += key.exportKey('public');
-      out += key.exportKey('private');
-      return out;
+      const client = new NodeRSA({ b: 512 });
+      const clientPublic = client.exportKey('public');
+      const clientPrivate = client.exportKey('private');
+
+      const server = new NodeRSA({ b: 512 });
+      const serverPublic = server.exportKey('public');
+      const serverPrivate = server.exportKey('private');
+
+      return {
+        client: serverPublic + '\n' + clientPrivate,
+        server: clientPublic + '\n' + serverPrivate,
+        baseClient: clientPublic + '\n' + clientPrivate,
+        baseServer: serverPublic + '\n' + serverPrivate,
+      };
     },
     decode: (text: string) => {
       if (!RSA.publicKey) {

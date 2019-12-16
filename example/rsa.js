@@ -1,53 +1,58 @@
 const Axios = require('axios').default;
-const { createRSA } = require('../umd');
+const NodeRSA = require('node-rsa');
 
-const RSA = createRSA();
-
-RSA.init(`
+const decode = new NodeRSA({ b: 512 });
+decode.setOptions({ encryptionScheme: 'pkcs1' });
+decode.importKey(
+  `
 -----BEGIN PUBLIC KEY-----
-MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAI6ZEQnI7LICgjpmYtwpRhBa5vIVPHTS
-6VVHE/WVoK6cduwwJyNX7PYgFHT9CrKJVdd99XmqN2TbNRaFkTetaA0CAwEAAQ==
+MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAI9UlD+q0TEPH2U2wLHM6Pl+kwadrHxS
+gMBr9IaLNwg3etHbzKktJ/tpKxtygOUm9F1+bmJOQvkamQpPYql/P+kCAwEAAQ==
 -----END PUBLIC KEY-----
+`,
+  'public',
+);
+
+const encode = new NodeRSA({ b: 512 });
+encode.setOptions({ encryptionScheme: 'pkcs1' });
+encode.importKey(
+  `
 -----BEGIN RSA PRIVATE KEY-----
-MIIBOgIBAAJBAJcEhpW60HpyTQ4ALikyoYkmqb40uTVd5BBWf8jHvXmsP+jv4UgM
-Zc9tbSxBC6ug3FsiFaHzLT+6cfSq+HIsFxkCAwEAAQJAZIHVlJc1oxipYdUK485X
-pfD+baGnVfY8EAeRmi4dU3khoO3837K7nEF6/zlb0/E59xA3ytw0ww6D7pKIa02S
-gQIhAN2qtBZ6AhWxYzXvxc6y43eq74LvMfp7XYfNqkMaaW7RAiEArmiEnojnD3Aj
-hEct0npSPpPQC+LygJ2SQTFxBFUaBckCIHtOQe9e31oB2xZd0sMwb6hZxfIn7L1R
-cq3gkh3Ry2SBAiBUFiYifSTRp6IoC11HRhxS+Vbr9C4w3kd+UQUJLrKOKQIhAMAb
-xRNJjNFCbTEyKb65ydGFYtcwzcX+AUcLlOb/n7G+
------END RSA PRIVATE KEY-----  
-`);
-
-const start = async () => {
-  const lightning = async data => {
-    return new Promise(cb => {
-      Axios.post(
-        'http://127.0.0.1:4010/less',
-        { code: RSA.encode({ ...data, _checkTime: Date.now(), _checkKey: '123' }) },
-        {
-          headers: { 'content-type': 'application/json' },
-        },
-      )
-        .then(res => {
-          if (res.data) {
-            if (res.data.code) {
-              return cb(RSA.decode(res.data.code));
-            }
-            return cb(res.data);
+MIIBPAIBAAJBAM0weU8cwkKXu0+VG+7L5KJkX3ePIdfva6LL4uF06YeR9YrTGHhd
+5/sS7M81MfFzYylLCqO94RJNtgih8MT/essCAwEAAQJAeUAGv0goRv+wkTN0oSTd
+Q1T60QTEo/x352iB9maGxTPcLZuM3NwwcwtKN4cZ9aL53Y9SMpYdCjpx67NWcx2S
+oQIhAPpmH1s+kL1wTPnl6QXcoXoiVnZh2oFc/nfq2z4CM6fxAiEA0cd27V3OzAFs
+saDiqShwoqE2wCaf+8pH805EpsDkansCIQCWg4BhtpAGb1S1+k9B6MdfxPg4HMXd
+cOq9Znz3Hxex4QIhAIjDR498huONUjWDtAGgMb505+Lhy4810y6WKj+kpcWdAiEA
+8XJBxFjhQuE28aRbV+fVuiHQX1LHOu2FPGc2BewB/eQ=
+-----END RSA PRIVATE KEY-----
+`,
+  'private',
+);
+const client = async data => {
+  return new Promise(cb => {
+    Axios.post(
+      'http://127.0.0.1:4010/less',
+      { code: encode.encryptPrivate({ ...data, _checkTime: Date.now(), _checkKey: '123456' }, 'base64') },
+      {
+        headers: { 'content-type': 'application/json' },
+      },
+    )
+      .then(res => {
+        if (res.data) {
+          if (res.data.code) {
+            return cb(decode.decryptPublic(res.data.code, 'utf8'));
           }
-          return res;
-        })
-        .catch(err => cb(err.response ? err.response.data : err));
-    });
-  };
-
-  var response = await lightning({
-    method: 'insertOne',
-    args: [{ name: 'dog你好', age: 10 }],
+          return cb(res.data);
+        }
+        return res;
+      })
+      .catch(err => cb(err.response ? err.response.data : err));
   });
-
-  console.log(response);
 };
 
-start();
+// test
+client({
+  method: 'insertOne',
+  args: [{ name: 'dog你好', age: 10 }],
+}).then(res => console.log(res));

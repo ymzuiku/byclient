@@ -11,8 +11,9 @@ interface IOptions {
     checkTime?: number;
     checkKey?: string;
     impose?: IImpose;
-    blockDb?: Set<string>;
-    blockCol?: Set<string>;
+    blockDb?: string[];
+    blockCol?: string[];
+    autoRSA?: boolean;
     RSAKey?: string;
 }
 export declare const serverless: (options: IOptions) => Promise<void>;

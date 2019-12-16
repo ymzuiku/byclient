@@ -5,6 +5,11 @@ export interface IRSA {
     init: (keyData: string) => void;
     decode: (text: string) => string;
     encode: (data: any) => string;
-    createKeys: () => string;
+    createKeys: () => {
+        client: string;
+        server: string;
+        baseClient: string;
+        baseServer: string;
+    };
 }
 export declare const createRSA: () => IRSA;

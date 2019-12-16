@@ -45,17 +45,69 @@ interface IOptions {
   checkTime?: number;
   checkKey?: string;
   impose?: IImpose;
-  blockDb?: Set<string>;
-  blockCol?: Set<string>;
+  blockDb?: string[];
+  blockCol?: string[];
+  autoRSA?: boolean;
   RSAKey?: string;
 }
 
 export const serverless = async (options: IOptions) => {
-  const { url = '/less', checkKey, checkTime, impose = {}, blockDb, blockCol, RSAKey } = options;
+  const {
+    url = '/less',
+    checkKey,
+    checkTime,
+    impose = {},
+    blockDb: theBlockDb,
+    blockCol: theBlockCol,
+    autoRSA,
+    RSAKey,
+  } = options;
+
+  const blockDb = new Set(['lightning', ...(theBlockDb || [])]);
+  const blockCol = new Set([...(theBlockCol || [])]);
+
   let RSA = createRSA();
 
   if (RSAKey) {
     RSA.init(RSAKey);
+  } else if (autoRSA) {
+    const col = db('lightning').collection('rsa');
+    const old = await col.findOne({ name: { $eq: autoRSA } });
+    let clientKey = '';
+
+    if (!old) {
+      const keys = RSA.createKeys();
+      clientKey = keys.client;
+      RSA.init(old.server);
+
+      await col.insertOne({
+        name: autoRSA,
+        ...keys,
+      });
+    } else {
+      clientKey = old.client;
+      RSA.init(old.server);
+    }
+
+    let errorGetAutoRSANumber = 0;
+
+    app.get('/lightning/rsa', async (req, rep) => {
+      if (errorGetAutoRSANumber >= 5) {
+        return rep.send('error times');
+      }
+      // 如果查询请求连续5次错误，限制15分钟查询时间
+      if (req.query.name !== autoRSA) {
+        errorGetAutoRSANumber += 1;
+        if (errorGetAutoRSANumber >= 5) {
+          setTimeout(() => {
+            errorGetAutoRSANumber = 0;
+          }, 1000 * 60 * 60);
+        }
+        return rep.send(req.query);
+      }
+
+      return rep.send(clientKey);
+    });
   }
 
   app.post(url, async (req, rep) => {
