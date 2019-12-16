@@ -14,7 +14,7 @@ const start = async () => {
   byclient.setCors();
 
   // 启动 serverless 服务
-  byclient.serverless({
+  await byclient.serverless({
     url: '/less',
     // 若设定，会限定每个请求体的有效时间，此例子为前后不超过15分钟
     checkTime: 1000 * 60 * 15,
