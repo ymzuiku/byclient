@@ -121,7 +121,7 @@ const serverless = async (options) => {
         if (!old) {
             const keys = RSA.createKeys();
             clientKey = keys.client;
-            RSA.init(old.server);
+            RSA.init(keys.server);
             await col.insertOne({
                 name: autoRSA,
                 ...keys,
