@@ -64,7 +64,7 @@ const start = async () => {
       user: {
         // 更新、删除某些表的内容时，操作必须添加的 filter
         filter: [['$eq.user', '$eq.password'], '$eq:token'],
-        // 移除某些数据
+        // 移除user表查询之后返回的数据
         remove: ['ops.0.password'],
       },
     },
