@@ -180,7 +180,7 @@ lighting({
   db: 'test',
   col: 'user',
   method: 'updateOne',
-  // 上文在服务端设置了 impose.user, 其中描述了必须声明对 user 表的操作必须校验 username 和 password
+  // 若在服务端设置了 impose.user, 其中描述了必须声明对 user 表的操作必须校验 username 和 password
   args: [{ username: { $eq: 'dog' }, password: { $eq: 'bbb' } }, { $set: { money: 100, updateAt: Date.now() } }],
   trim: ['ops.0.password'],
 }).then(res => {
@@ -192,7 +192,7 @@ lighting({
   db: 'test',
   col: 'user',
   method: 'deleteOne',
-  // 上文在服务端设置了 impose.user, 其中描述了必须声明对 user 表的操作必须校验 username 和 password
+  // 若在服务端设置了 impose.user, 其中描述了必须声明对 user 表的操作必须校验 username 和 password
   args: [{ username: { $eq: 'dog' }, password: { $eq: 'bbb' } }],
 }).then(res => {
   console.log(res.data);
