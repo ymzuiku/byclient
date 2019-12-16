@@ -3,8 +3,16 @@ import { db } from './db';
 import { ObjectId } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
-import { dbLocker } from './dbLocker';
-import { RSA } from './rsa';
+import { createRSA } from './createRSA';
+
+interface ICheckCol {
+  [key: string]: {
+    /** 操作时必须设置的filter */
+    filter: any[];
+    /** 返回时默认修剪的对象 */
+    trim: string[];
+  };
+}
 
 interface IEvent {
   db?: string;
@@ -19,24 +27,37 @@ interface IEvent {
   trim?: string[];
 }
 
-const canUseMethod = {
-  insert: true,
-  insertMany: true,
-  insertOne: true,
-  update: true,
-  updateMany: true,
-  updateOne: true,
-  replaceOne: true,
-  find: true,
-  findOne: true,
-};
+const canUseMethod = new Set([
+  'insert',
+  'insertMany',
+  'insertOne',
+  'deleteOne',
+  'update',
+  'updateMany',
+  'updateOne',
+  'replaceOne',
+  'find',
+  'findOne',
+]);
 
 interface IOptions {
-  checkTime?:number;
+  url: string;
+  checkTime?: number;
   checkKey?: string;
+  checkFilter?: ICheckCol;
+  blockDb?: Set<string>;
+  blockCol?: Set<string>;
+  RSAKey?: string;
 }
 
-export const serverless = async (url = '/less', options?: IOptions) => {
+export const serverless = async (options: IOptions) => {
+  const { url = '/less', checkKey, checkTime, checkFilter = {}, blockDb, blockCol, RSAKey } = options;
+  let RSA = createRSA();
+
+  if (RSAKey) {
+    RSA.init(RSAKey);
+  }
+
   app.post(url, async (req, rep) => {
     if (!req.body || !req.body.code) {
       return rep.status(400).send(new Error('body or body.code is empty'));
@@ -44,20 +65,17 @@ export const serverless = async (url = '/less', options?: IOptions) => {
 
     const realData = JSON.parse(RSA.decode(req.body.code));
 
-    if (options) {
-      if (options.checkTime) {
-        const nowTime = Date.now();
-        if (realData._checkTime < nowTime - options.checkTime || realData._checkTime > nowTime + options.checkTime) {
-          return rep.status(400).send(new Error('client undefined error'));
-        }
-      }
-      if (options.checkKey) {
-        if (realData._checkKey !== options.checkKey) {
-          return rep.status(400).send(new Error('client undefined error'));
-        }
+    if (checkTime) {
+      const nowTime = Date.now();
+      if (realData._checkTime < nowTime - checkTime || realData._checkTime > nowTime + checkTime) {
+        return rep.status(400).send(new Error('no permission!'));
       }
     }
-
+    if (checkKey) {
+      if (realData._checkKey !== checkKey) {
+        return rep.status(400).send(new Error('no permission!'));
+      }
+    }
 
     const body: IEvent[] = realData.events ? realData.events : [realData];
 
@@ -85,7 +103,15 @@ export const serverless = async (url = '/less', options?: IOptions) => {
         trim,
       } = body[nowEvent];
 
-      if (!(canUseMethod as any)[method]) {
+      if (blockDb && blockDb.has(dbName)) {
+        return rep.status(400).send(new Error('no permission!'));
+      }
+
+      if (blockCol && blockCol.has(colName)) {
+        return rep.status(400).send(new Error('no permission!'));
+      }
+
+      if (!canUseMethod.has(method)) {
         return rep.status(400).send(new Error(`can not use "${method}" method`));
       }
       const col = db(dbName).collection(colName);
@@ -112,7 +138,7 @@ export const serverless = async (url = '/less', options?: IOptions) => {
 
       // 处理参数和限制权限
       if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-        const filter = dbLocker[colName] && dbLocker[colName].filter;
+        const filter = checkFilter[colName] && checkFilter[colName].filter;
         if (filter) {
           let isLockerError = true;
           for (let i = 0; i < filter.length; i++) {
@@ -170,7 +196,6 @@ export const serverless = async (url = '/less', options?: IOptions) => {
           return rep.status(400).send(blockError);
         }
       }
-
       if (!isNeedSend) {
         nowEvent += 1;
         await recall();
@@ -184,7 +209,7 @@ export const serverless = async (url = '/less', options?: IOptions) => {
         const { connection, message, ...sendData } = data;
 
         // 提出不需要返回的
-        const allTrim = new Set([...(trim || []), ...((dbLocker[colName] && dbLocker[colName].trim) || [])]);
+        const allTrim = new Set([...(trim || []), ...((checkFilter[colName] && checkFilter[colName].trim) || [])]);
 
         allTrim.forEach(key => {
           set(sendData, key, undefined);

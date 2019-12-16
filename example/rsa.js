@@ -1,5 +1,7 @@
 const Axios = require('axios').default;
-const { RSA } = require('../umd');
+const { createRSA } = require('../umd');
+
+const RSA = createRSA();
 
 RSA.init(`
 -----BEGIN PUBLIC KEY-----
@@ -21,8 +23,8 @@ const start = async () => {
   const lightning = async data => {
     return new Promise(cb => {
       Axios.post(
-        'http://127.0.0.1:4010/lightning',
-        { code: RSA.encode(data) },
+        'http://127.0.0.1:4010/less',
+        { code: RSA.encode({ ...data, _checkTime: Date.now(), _checkKey: '123' }) },
         {
           headers: { 'content-type': 'application/json' },
         },

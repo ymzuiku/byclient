@@ -21,7 +21,8 @@ export const createRSA = () => {
       RSA.priateKey = new NodeRSA({ b: 512 });
       RSA.publicKey.importKey(a, 'public');
       RSA.priateKey.importKey(b, 'private');
-      // RSA.key.setOptions({ encryptionScheme: 'pkcs1' });
+      // RSA.publicKey.setOptions({ encryptionScheme: 'pkcs1' });
+      // RSA.priateKey.setOptions({ encryptionScheme: 'pkcs1' });
     },
     createKeys: () => {
       const key = new NodeRSA({ b: 512 });

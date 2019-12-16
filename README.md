@@ -58,8 +58,11 @@ const start = async () => {
   // 开发过程中可以取消跨域检测，注意不要在生产中使用
   lightning.setCors();
 
-  // 开启RSA加密，交换客户端和服务端的公钥
-  lightning.RSA.init(`
+  // 启动 serverless 服务
+  lightning.serverless({
+    url: '/less',
+    // 开启RSA加密，交换客户端和服务端的公钥
+    RSAKey: `
 -----BEGIN PUBLIC KEY-----
 MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJcEhpW60HpyTQ4ALikyoYkmqb40uTVd
 5BBWf8jHvXmsP+jv4UgMZc9tbSxBC6ug3FsiFaHzLT+6cfSq+HIsFxkCAwEAAQ==
@@ -73,10 +76,8 @@ iaCa6tffyRuAjgK+qlttWGK5QeXNIscCIElA2uXOcmoPhSpT8LoysLD9I13Z5OWJ
 CQ8c8ZZ4b8kVAiBuKH6rwtIOdoD/L7y3YdAjTr8fP/WiSQTjgPyl5JXx8QIgbmsI
 L5/FGbQ9KqH6LREFOmq6Iz8PFZGGD+Pe1u/MgEA=
 -----END RSA PRIVATE KEY-----
-`);
-
-  // 启动 serverless 服务
-  lightning.serverless('/less');
+    `,
+  });
 
   try {
     await lightning.app.listen(4010, '0.0.0.0');

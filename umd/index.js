@@ -47,16 +47,6 @@ const sha256 = (str, slat) => {
     return obj.digest('hex');
 };
 
-let dbLocker = {};
-// interface ILocker {
-//   [key: string]: string[];
-// }
-// export const setDbLocker = (locker: ILocker) => {
-//   Object.keys(locker).forEach(key => {
-//     dbLocker[key] = locker[key];
-//   });
-// };
-
 const createRSA = () => {
     const RSA = {
         priateKey: null,
@@ -68,7 +58,8 @@ const createRSA = () => {
             RSA.priateKey = new NodeRSA({ b: 512 });
             RSA.publicKey.importKey(a, 'public');
             RSA.priateKey.importKey(b, 'private');
-            // RSA.key.setOptions({ encryptionScheme: 'pkcs1' });
+            // RSA.publicKey.setOptions({ encryptionScheme: 'pkcs1' });
+            // RSA.priateKey.setOptions({ encryptionScheme: 'pkcs1' });
         },
         createKeys: () => {
             const key = new NodeRSA({ b: 512 });
@@ -96,36 +87,38 @@ const createRSA = () => {
     return RSA;
 };
 
-const RSA = createRSA();
-
-const canUseMethod = {
-    insert: true,
-    insertMany: true,
-    insertOne: true,
-    update: true,
-    updateMany: true,
-    updateOne: true,
-    replaceOne: true,
-    find: true,
-    findOne: true,
-};
-const serverless = async (url = '/less', options) => {
+const canUseMethod = new Set([
+    'insert',
+    'insertMany',
+    'insertOne',
+    'deleteOne',
+    'update',
+    'updateMany',
+    'updateOne',
+    'replaceOne',
+    'find',
+    'findOne',
+]);
+const serverless = async (options) => {
+    const { url = '/less', checkKey, checkTime, checkFilter = {}, blockDb, blockCol, RSAKey } = options;
+    let RSA = createRSA();
+    if (RSAKey) {
+        RSA.init(RSAKey);
+    }
     app.post(url, async (req, rep) => {
         if (!req.body || !req.body.code) {
             return rep.status(400).send(new Error('body or body.code is empty'));
         }
         const realData = JSON.parse(RSA.decode(req.body.code));
-        if (options) {
-            if (options.checkTime) {
-                const nowTime = Date.now();
-                if (realData._checkTime < nowTime - options.checkTime || realData._checkTime > nowTime + options.checkTime) {
-                    return rep.status(400).send(new Error('client undefined error'));
-                }
+        if (checkTime) {
+            const nowTime = Date.now();
+            if (realData._checkTime < nowTime - checkTime || realData._checkTime > nowTime + checkTime) {
+                return rep.status(400).send(new Error('no permission!'));
             }
-            if (options.checkKey) {
-                if (realData._checkKey !== options.checkKey) {
-                    return rep.status(400).send(new Error('client undefined error'));
-                }
+        }
+        if (checkKey) {
+            if (realData._checkKey !== checkKey) {
+                return rep.status(400).send(new Error('no permission!'));
             }
         }
         const body = realData.events ? realData.events : [realData];
@@ -141,7 +134,13 @@ const serverless = async (url = '/less', options) => {
                 isNeedSend = true;
             }
             let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, trim, } = body[nowEvent];
-            if (!canUseMethod[method]) {
+            if (blockDb && blockDb.has(dbName)) {
+                return rep.status(400).send(new Error('no permission!'));
+            }
+            if (blockCol && blockCol.has(colName)) {
+                return rep.status(400).send(new Error('no permission!'));
+            }
+            if (!canUseMethod.has(method)) {
                 return rep.status(400).send(new Error(`can not use "${method}" method`));
             }
             const col = db(dbName).collection(colName);
@@ -163,7 +162,7 @@ const serverless = async (url = '/less', options) => {
             }
             // 处理参数和限制权限
             if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-                const filter = dbLocker[colName] && dbLocker[colName].filter;
+                const filter = checkFilter[colName] && checkFilter[colName].filter;
                 if (filter) {
                     let isLockerError = true;
                     for (let i = 0; i < filter.length; i++) {
@@ -228,7 +227,7 @@ const serverless = async (url = '/less', options) => {
             if (data) {
                 const { connection, message, ...sendData } = data;
                 // 提出不需要返回的
-                const allTrim = new Set([...(trim || []), ...((dbLocker[colName] && dbLocker[colName].trim) || [])]);
+                const allTrim = new Set([...(trim || []), ...((checkFilter[colName] && checkFilter[colName].trim) || [])]);
                 allTrim.forEach(key => {
                     lodash.set(sendData, key, undefined);
                 });
@@ -256,12 +255,10 @@ const controllersLoader = (dir, indexOf, params) => {
     });
 };
 
-exports.RSA = RSA;
 exports.app = app;
 exports.controllersLoader = controllersLoader;
 exports.createRSA = createRSA;
 exports.db = db;
-exports.dbLocker = dbLocker;
 exports.serverless = serverless;
 exports.setCors = setCors;
 exports.sha256 = sha256;
