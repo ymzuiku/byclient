@@ -21,9 +21,9 @@ const start = async () => {
     // 若设定，会校验一个key，只有key正确时才有权限操作
     checkKey: '123456',
     // 拦截某些数据库的操作
-    blockDb: ['user'],
-    // 拦截某些表的操作
-    blockCol: ['pay'],
+    blockDb: ['produc'],
+    // 拦截某些表的行为操作, 以下拦截 user 表的 delete 和 insert 相关的行为，并且拦截 pay 表的所有行为
+    blockCol: ['user.delete.insert', 'pay.all'],
     // 针对某些表的一些限制, 提高安全性
     impose: {
       user: {

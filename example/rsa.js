@@ -1,20 +1,6 @@
 const Axios = require('axios').default;
 const NodeRSA = require('node-rsa');
 
-const decode = new NodeRSA({ b: 1024 });
-decode.setOptions({ encryptionScheme: 'pkcs1' });
-decode.importKey(
-  `
-  -----BEGIN PUBLIC KEY-----
-  MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCAp8dV4w1Ojf8oIHb9iobsDKfW
-  KQGtdO1dHrnbUPX9JeY+fFfC3hey/mTpITzP1fAFWzkoFEqm9FKOSd3uCUaM6VOp
-  PH9u2Y/cTjNFirJ0YncEjAghWsGIBBViSuKkkWXlscPoJaloG2S7DONRkF1Bcj4G
-  NYGyyKk2lj76KLYxCwIDAQAB
-  -----END PUBLIC KEY-----
-`,
-  'public',
-);
-
 const encode = new NodeRSA({ b: 1024 });
 encode.setOptions({ encryptionScheme: 'pkcs1' });
 encode.importKey(
@@ -50,9 +36,6 @@ const client = async data => {
     )
       .then(res => {
         if (res.data) {
-          if (res.data.code) {
-            return cb(decode.decryptPublic(res.data.code, 'utf8'));
-          }
           return cb(res.data);
         }
         return res;

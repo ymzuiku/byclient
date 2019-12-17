@@ -15,6 +15,7 @@ const start = async () => {
         trim: [],
       },
     },
+    blockCol: ['user.delete.test'],
     autoRSA: 'test',
   });
 

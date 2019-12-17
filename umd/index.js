@@ -111,7 +111,13 @@ const canUseMethod = new Set([
 const serverless = async (options) => {
     const { url = '/less', checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, responseRSA, autoRSA, RSAKey, rsaURL = '/rsa', bitSpace = '|;|', } = options;
     const blockDb = new Set(['byclient', ...(theBlockDb || [])]);
-    const blockCol = new Set([...(theBlockCol || [])]);
+    const blockCol = new Map();
+    if (theBlockCol) {
+        theBlockCol.forEach(v => {
+            const [colName, ...colMethods] = v.split('.');
+            blockCol.set(colName, colMethods.join(','));
+        });
+    }
     let RSA = createRSA();
     if (RSAKey) {
         RSA.init(RSAKey);
@@ -184,7 +190,10 @@ const serverless = async (options) => {
                 return rep.status(400).send(new Error('no permission[3]!'));
             }
             if (blockCol && blockCol.has(colName)) {
-                return rep.status(400).send(new Error('no permission[4]!'));
+                const colBlockMethod = blockCol.get(colName);
+                if (colBlockMethod === 'all' || method.indexOf(colBlockMethod) > -1) {
+                    return rep.status(400).send(new Error('no permission[4]!'));
+                }
             }
             if (!canUseMethod.has(method)) {
                 return rep.status(400).send(new Error(`can not use "${method}" method`));

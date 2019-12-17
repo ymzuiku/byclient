@@ -70,7 +70,13 @@ export const serverless = async (options: IOptions) => {
   } = options;
 
   const blockDb = new Set(['byclient', ...(theBlockDb || [])]);
-  const blockCol = new Set([...(theBlockCol || [])]);
+  const blockCol = new Map();
+  if (theBlockCol) {
+    theBlockCol.forEach(v => {
+      const [colName, ...colMethods] = v.split('.');
+      blockCol.set(colName, colMethods.join(','));
+    });
+  }
 
   let RSA = createRSA();
 
@@ -166,7 +172,10 @@ export const serverless = async (options: IOptions) => {
       }
 
       if (blockCol && blockCol.has(colName)) {
-        return rep.status(400).send(new Error('no permission[4]!'));
+        const colBlockMethod = blockCol.get(colName);
+        if (colBlockMethod === 'all' || method.indexOf(colBlockMethod) > -1) {
+          return rep.status(400).send(new Error('no permission[4]!'));
+        }
       }
 
       if (!canUseMethod.has(method)) {
