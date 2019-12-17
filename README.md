@@ -52,7 +52,7 @@ start();
 
 设置了 serverless 之后，大部分 mongodb 数据库的操作都迁移到了前端， client 请求。
 
-我们以开启了 autoRSA 加密方案为例，首先启动服务，然后访问以下链接拿到 client 的 RSA 密钥：
+我们以开启了 autoRSA 加密方案为例，首先启动服务，然后访问以下链接拿到 client 的 RSA 加密密钥：
 
 `http://0.0.0.0:4010/byclient/rsa?name=the-password`
 
@@ -62,19 +62,7 @@ start();
 const Axios = require('axios').default;
 const NodeRSA = require('node-rsa');
 
-const decode = new NodeRSA({ b: 512 });
-decode.setOptions({ encryptionScheme: 'pkcs1' });
-decode.importKey(
-  `
------BEGIN PUBLIC KEY-----
-MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAI9UlD+q0TEPH2U2wLHM6Pl+kwadrHxS
-gMBr9IaLNwg3etHbzKktJ/tpKxtygOUm9F1+bmJOQvkamQpPYql/P+kCAwEAAQ==
------END PUBLIC KEY-----
-`,
-  'public',
-);
-
-const encode = new NodeRSA({ b: 512 });
+const encode = new NodeRSA({ b: 1024 });
 encode.setOptions({ encryptionScheme: 'pkcs1' });
 encode.importKey(
   `
@@ -101,9 +89,6 @@ const client = async data => {
     )
       .then(res => {
         if (res.data) {
-          if (res.data.code) {
-            return cb(decode.decryptPublic(res.data.code, 'utf8'));
-          }
           return cb(res.data);
         }
         return res;

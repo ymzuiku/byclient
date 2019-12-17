@@ -1,39 +1,49 @@
 const Axios = require('axios').default;
 const NodeRSA = require('node-rsa');
 
-const decode = new NodeRSA({ b: 512 });
+const decode = new NodeRSA({ b: 1024 });
 decode.setOptions({ encryptionScheme: 'pkcs1' });
 decode.importKey(
   `
------BEGIN PUBLIC KEY-----
-MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAI9UlD+q0TEPH2U2wLHM6Pl+kwadrHxS
-gMBr9IaLNwg3etHbzKktJ/tpKxtygOUm9F1+bmJOQvkamQpPYql/P+kCAwEAAQ==
------END PUBLIC KEY-----
+  -----BEGIN PUBLIC KEY-----
+  MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCAp8dV4w1Ojf8oIHb9iobsDKfW
+  KQGtdO1dHrnbUPX9JeY+fFfC3hey/mTpITzP1fAFWzkoFEqm9FKOSd3uCUaM6VOp
+  PH9u2Y/cTjNFirJ0YncEjAghWsGIBBViSuKkkWXlscPoJaloG2S7DONRkF1Bcj4G
+  NYGyyKk2lj76KLYxCwIDAQAB
+  -----END PUBLIC KEY-----
 `,
   'public',
 );
 
-const encode = new NodeRSA({ b: 512 });
+const encode = new NodeRSA({ b: 1024 });
 encode.setOptions({ encryptionScheme: 'pkcs1' });
 encode.importKey(
   `
------BEGIN RSA PRIVATE KEY-----
-MIIBPAIBAAJBAM0weU8cwkKXu0+VG+7L5KJkX3ePIdfva6LL4uF06YeR9YrTGHhd
-5/sS7M81MfFzYylLCqO94RJNtgih8MT/essCAwEAAQJAeUAGv0goRv+wkTN0oSTd
-Q1T60QTEo/x352iB9maGxTPcLZuM3NwwcwtKN4cZ9aL53Y9SMpYdCjpx67NWcx2S
-oQIhAPpmH1s+kL1wTPnl6QXcoXoiVnZh2oFc/nfq2z4CM6fxAiEA0cd27V3OzAFs
-saDiqShwoqE2wCaf+8pH805EpsDkansCIQCWg4BhtpAGb1S1+k9B6MdfxPg4HMXd
-cOq9Znz3Hxex4QIhAIjDR498huONUjWDtAGgMb505+Lhy4810y6WKj+kpcWdAiEA
-8XJBxFjhQuE28aRbV+fVuiHQX1LHOu2FPGc2BewB/eQ=
------END RSA PRIVATE KEY-----
+  -----BEGIN RSA PRIVATE KEY-----
+  MIICXAIBAAKBgQCZ78yV/ZI0VSBjvgWTqMprm7eUovcnVBKS8uIg84ZLgHQKUEeR
+  FCfidbLVj/ClXD/KBauyQlzKII0Q9ST7IQpxkHERn+mGvAq7+1dF6nGIy25OzyT0
+  /eRL0Q+o/yfC+QjgCxJZ0RP2U+Q+b5gor+EKGG4W/4w5eAGJ/RRw+tnyOwIDAQAB
+  AoGAILXJ/V1CgghMt6UbPkMxsCgInHb8mcjNoZgm4OWeddC317EzY+qqhv6Hn8XU
+  Vu8BRwZpc5mSagj8sMvGre5Zb21a2vPCK5WtavTqkrzE6lkGRCaUXFUlm3qM59NT
+  dda4Lfs92pQVA9hIEq0hvUD+ove5P9RtH0llskrx1ozYXSECQQD90FWuVCJTVHko
+  /Wx6QkHBeRU2OnhkaSe725eqF4a4Y5X/ZoCOq2bhbwDzbJQNqyE0BSFM3ayIAmtG
+  0lPAiulZAkEAm0M7sYRYUN6LbYxC99HooCJ/sa/KsvX2v2v7RMCnIJXohEQZV+Ma
+  Go1zgjEy3CfK2RUIH6NXnhnkId6GZuzxswJBAPwhDlwEO6znhwwO4sl4M/XLICUk
+  ZB/qzYuxkbFneW6FjqWM3zvaTHK4YAtv2orRakRQrEm9Evxw2rwZhxUHaNECQDSL
+  PVFnK4g6uE7bj/JUXHiNFE/q4RtNeDLx9TggRq8VbHoOndELb1MbGcMuqTquUMzE
+  fFpQqh88PeNkbnG4sFcCQEHq1RneVG/aZ9lKrQ2UYa599FOpMBDndeZv/1uQRN7G
+  ldM39cazWikBMhrLziNqVZOC9m7A+SHYqwJQ5K/bll4=
+  -----END RSA PRIVATE KEY-----
 `,
   'private',
 );
 const client = async data => {
   return new Promise(cb => {
+    const code = encode.encryptPrivate({ ...data, _checkTime: Date.now(), _checkKey: '123456' }, 'base64');
+
     Axios.post(
       'http://127.0.0.1:4010/less',
-      { code: encode.encryptPrivate({ ...data, _checkTime: Date.now(), _checkKey: '123456' }, 'base64') },
+      { code },
       {
         headers: { 'content-type': 'application/json' },
       },
@@ -54,5 +64,126 @@ const client = async data => {
 // test
 client({
   method: 'insertOne',
-  args: [{ name: 'dog你好', age: 10 }],
+  args: [
+    {
+      name: 'dog你好',
+      list: [
+        "1234567890asdfghjklqwertyuiuiop[]|\\xcxcqwertyuiopasdfghhjjklzcxzn ,.c.bv'[]",
+        '你好，测试中文，和中文标点符号:；，。/【】、-=，M《》',
+        // '测试超过rsa分段',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        // 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        // 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        // 'ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      ],
+      age: 10,
+    },
+  ],
 }).then(res => console.log(res));

@@ -49,6 +49,9 @@ interface IOptions {
   blockCol?: string[];
   autoRSA?: boolean;
   RSAKey?: string;
+  rsaURL?: string;
+  bitSpace?: string;
+  responseRSA?: boolean;
 }
 
 export const serverless = async (options: IOptions) => {
@@ -59,8 +62,11 @@ export const serverless = async (options: IOptions) => {
     impose = {},
     blockDb: theBlockDb,
     blockCol: theBlockCol,
+    responseRSA,
     autoRSA,
     RSAKey,
+    rsaURL = '/rsa',
+    bitSpace = '|;|',
   } = options;
 
   const blockDb = new Set(['byclient', ...(theBlockDb || [])]);
@@ -91,7 +97,7 @@ export const serverless = async (options: IOptions) => {
 
     let errorGetAutoRSANumber = 0;
 
-    app.get('/byclient/rsa', async (req, rep) => {
+    app.get(rsaURL, async (req, rep) => {
       if (errorGetAutoRSANumber >= 5) {
         return rep.send('error times');
       }
@@ -267,7 +273,7 @@ export const serverless = async (options: IOptions) => {
           set(sendData, key, undefined);
         });
 
-        return rep.status(200).send({ code: RSA.encode(sendData) });
+        return rep.status(200).send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
       }
     };
 

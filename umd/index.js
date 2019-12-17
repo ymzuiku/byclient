@@ -54,22 +54,24 @@ const createRSA = () => {
         init: keyData => {
             let [a, b] = keyData.split('-----END PUBLIC KEY-----');
             a += `-----END PUBLIC KEY-----`;
-            RSA.publicKey = new NodeRSA({ b: 512 });
-            RSA.priateKey = new NodeRSA({ b: 512 });
-            RSA.publicKey.importKey(a, 'public');
-            RSA.priateKey.importKey(b, 'private');
+            RSA.publicKey = new NodeRSA({ b: 1024 });
+            RSA.priateKey = new NodeRSA({ b: 1024 });
             RSA.publicKey.setOptions({ encryptionScheme: 'pkcs1' });
             RSA.priateKey.setOptions({ encryptionScheme: 'pkcs1' });
+            RSA.publicKey.importKey(a, 'public');
+            RSA.priateKey.importKey(b, 'private');
         },
         createKeys: () => {
-            const client = new NodeRSA({ b: 512 });
+            const client = new NodeRSA({ b: 1024 });
+            const server = new NodeRSA({ b: 1024 });
+            client.setOptions({ encryptionScheme: 'pkcs1' });
+            server.setOptions({ encryptionScheme: 'pkcs1' });
             const clientPublic = client.exportKey('public');
             const clientPrivate = client.exportKey('private');
-            const server = new NodeRSA({ b: 512 });
             const serverPublic = server.exportKey('public');
             const serverPrivate = server.exportKey('private');
             return {
-                client: serverPublic + '\n' + clientPrivate,
+                client: clientPrivate,
                 server: clientPublic + '\n' + serverPrivate,
                 baseClient: clientPublic + '\n' + clientPrivate,
                 baseServer: serverPublic + '\n' + serverPrivate,
@@ -107,7 +109,7 @@ const canUseMethod = new Set([
     'findOne',
 ]);
 const serverless = async (options) => {
-    const { url = '/less', checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, autoRSA, RSAKey, } = options;
+    const { url = '/less', checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, responseRSA, autoRSA, RSAKey, rsaURL = '/rsa', bitSpace = '|;|', } = options;
     const blockDb = new Set(['byclient', ...(theBlockDb || [])]);
     const blockCol = new Set([...(theBlockCol || [])]);
     let RSA = createRSA();
@@ -132,7 +134,7 @@ const serverless = async (options) => {
             RSA.init(old.server);
         }
         let errorGetAutoRSANumber = 0;
-        app.get('/byclient/rsa', async (req, rep) => {
+        app.get(rsaURL, async (req, rep) => {
             if (errorGetAutoRSANumber >= 5) {
                 return rep.send('error times');
             }
@@ -275,7 +277,7 @@ const serverless = async (options) => {
                 allTrim.forEach(key => {
                     lodash.set(sendData, key, undefined);
                 });
-                return rep.status(200).send({ code: RSA.encode(sendData) });
+                return rep.status(200).send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
             }
         };
         await recall();

@@ -22,24 +22,26 @@ export const createRSA = () => {
       let [a, b] = keyData.split('-----END PUBLIC KEY-----');
       a += `-----END PUBLIC KEY-----`;
 
-      RSA.publicKey = new NodeRSA({ b: 512 });
-      RSA.priateKey = new NodeRSA({ b: 512 });
-      RSA.publicKey.importKey(a, 'public');
-      RSA.priateKey.importKey(b, 'private');
+      RSA.publicKey = new NodeRSA({ b: 1024 });
+      RSA.priateKey = new NodeRSA({ b: 1024 });
       RSA.publicKey.setOptions({ encryptionScheme: 'pkcs1' });
       RSA.priateKey.setOptions({ encryptionScheme: 'pkcs1' });
+      RSA.publicKey.importKey(a, 'public');
+      RSA.priateKey.importKey(b, 'private');
     },
     createKeys: () => {
-      const client = new NodeRSA({ b: 512 });
+      const client = new NodeRSA({ b: 1024 });
+      const server = new NodeRSA({ b: 1024 });
+      client.setOptions({ encryptionScheme: 'pkcs1' });
+      server.setOptions({ encryptionScheme: 'pkcs1' });
+
       const clientPublic = client.exportKey('public');
       const clientPrivate = client.exportKey('private');
-
-      const server = new NodeRSA({ b: 512 });
       const serverPublic = server.exportKey('public');
       const serverPrivate = server.exportKey('private');
 
       return {
-        client: serverPublic + '\n' + clientPrivate,
+        client: clientPrivate,
         server: clientPublic + '\n' + serverPrivate,
         baseClient: clientPublic + '\n' + clientPrivate,
         baseServer: serverPublic + '\n' + serverPrivate,

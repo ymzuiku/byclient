@@ -15,6 +15,9 @@ interface IOptions {
     blockCol?: string[];
     autoRSA?: boolean;
     RSAKey?: string;
+    rsaURL?: string;
+    bitSpace?: string;
+    responseRSA?: boolean;
 }
 export declare const serverless: (options: IOptions) => Promise<void>;
 export {};
