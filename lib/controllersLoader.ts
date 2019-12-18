@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import { resolve } from 'path';
 
-export const controllersLoader = (dir: string, indexOf: string, params?:any) => {
+export const controllersLoader = (dir: string, indexOf: string, params?: any) => {
   const files = fs.readdirSync(dir);
   files.forEach((file: string) => {
     const nextDir = resolve(dir, file);

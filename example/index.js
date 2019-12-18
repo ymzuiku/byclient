@@ -1,11 +1,11 @@
-const byclient = require('../umd');
+const handserver = require('../umd');
 
 const start = async () => {
-  await byclient.db.init('mongodb://127.0.0.1:27017', 'test');
+  await handserver.db.init('mongodb://127.0.0.1:27017', 'test');
 
-  byclient.setCors();
+  handserver.setCors();
 
-  await byclient.serverless({
+  await handserver.restfulLess({
     url: '/less',
     checkKey: '123456',
     checkTime: 60 * 1000 * 15,
@@ -20,9 +20,9 @@ const start = async () => {
   });
 
   try {
-    await byclient.app.listen(4010, '0.0.0.0');
+    await handserver.app.listen(4010, '0.0.0.0');
   } catch (error) {
-    byclient.app.log.error(error);
+    handserver.app.log.error(error);
     process.exit(1);
   }
 };

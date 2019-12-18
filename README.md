@@ -2,19 +2,19 @@
 
 基于 `fastify` 的 serverless
 
-## serverless
+## restfulLess
 
 ```js
-const byclient = require('byclient');
+const handserver = require('handserver');
 
 const start = async () => {
-  await byclient.db.init('mongodb://127.0.0.1:27017');
+  await handserver.db.init('mongodb://127.0.0.1:27017');
 
   // 开发过程中可以取消跨域检测，注意不要在生产中使用
-  byclient.setCors();
+  handserver.setCors();
 
-  // 启动 serverless 服务
-  await byclient.serverless({
+  // 启动 restful-less 服务
+  await handserver.restfulLess({
     url: '/less',
     // 若设定，会限定每个请求体的有效时间，此例子为前后不超过15分钟
     checkTime: 1000 * 60 * 15,
@@ -35,14 +35,14 @@ const start = async () => {
     },
     // 开启 RSA 加密，自动配置RSA加密方案, 此密钥请设置较长且保留好
     // 若前后端要更新 RSA 密钥，请更新这个密钥，并且重启服务器
-    // 开启 autoRSA，之后，可以通过访问服务 /byclient/rsa?name=the-password 拿到客户端密钥，此服务若失败5次，需要间隔1小时方可尝试
+    // 开启 autoRSA，之后，可以通过访问服务 /rsa?name=the-password 拿到客户端密钥，此服务若失败5次，需要间隔1小时方可尝试
     autoRSA: 'the-password',
   });
 
   try {
-    await byclient.app.listen(4010, '0.0.0.0');
+    await handserver.app.listen(4010, '0.0.0.0');
   } catch (error) {
-    byclient.app.log.error(error);
+    handserver.app.log.error(error);
     process.exit(1);
   }
 };
@@ -50,11 +50,11 @@ const start = async () => {
 start();
 ```
 
-设置了 serverless 之后，大部分 mongodb 数据库的操作都迁移到了前端， client 请求。
+设置了 restfulLess 之后，大部分 mongodb 数据库的操作都迁移到了前端， client 请求。
 
 我们以开启了 autoRSA 加密方案为例，首先启动服务，然后访问以下链接拿到 client 的 RSA 加密密钥：
 
-`http://0.0.0.0:4010/byclient/rsa?name=the-password`
+`http://0.0.0.0:4010/rsa?name=the-password`
 
 接下来先为客户端创建一个请求方法 client:
 
@@ -177,34 +177,34 @@ client({
 
 ## 普通服务
 
-byclient 亦可以快速搭建普通的 web 服务：
+handserver 亦可以快速搭建普通的 web 服务：
 
 ```js
-const byclient = require('byclient');
+const handserver = require('handserver');
 
 const start = async () => {
-  await byclient.db.init('mongodb://127.0.0.1:27017');
+  await handserver.db.init('mongodb://127.0.0.1:27017');
 
   // 开发过程中可以取消跨域检测
-  byclient.setCors();
+  handserver.setCors();
 
   // 自动加载文件名包含 .controller.js 的文件
-  byclient.controllersLoader(resolve(__dirname, './controllers'), '.controller.js');
+  handserver.controllersLoader(resolve(__dirname, './controllers'), '.controller.js');
 
-  byclient.app.get('/ping', (req, rep) => {
+  handserver.app.get('/ping', (req, rep) => {
     rep.send({ hello: 'world' });
   });
 
-  byclient.app.post('/ping', (req, rep) => {
+  handserver.app.post('/ping', (req, rep) => {
     let { username, password } = req.body || {};
 
     rep.send({ hello: `${username}-${password}` });
   });
 
   try {
-    await byclient.app.listen(4010, '0.0.0.0');
+    await handserver.app.listen(4010, '0.0.0.0');
   } catch (error) {
-    byclient.app.log.error(error);
+    handserver.app.log.error(error);
     process.exit(1);
   }
 };

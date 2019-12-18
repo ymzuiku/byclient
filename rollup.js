@@ -36,7 +36,7 @@ const watchOptions = {
   output: {
     file: './umd/index.js',
     format: 'cjs',
-    name: 'byclient',
+    name: 'handserver',
     globals: {
       fastify: 'fastify',
       fastifyCors: 'fastify-cors',

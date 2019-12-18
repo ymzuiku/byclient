@@ -4,6 +4,7 @@ import { ObjectId } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
 import { createRSA } from './createRSA';
+import ws from 'ws';
 
 interface IImpose {
   [key: string]: {
@@ -50,11 +51,10 @@ interface IOptions {
   autoRSA?: boolean;
   RSAKey?: string;
   rsaURL?: string;
-  bitSpace?: string;
   responseRSA?: boolean;
 }
 
-export const serverless = async (options: IOptions) => {
+export const wsLess = async (options: IOptions) => {
   const {
     url = '/less',
     checkKey,
@@ -66,10 +66,9 @@ export const serverless = async (options: IOptions) => {
     autoRSA,
     RSAKey,
     rsaURL = '/rsa',
-    bitSpace = '|;|',
   } = options;
 
-  const blockDb = new Set(['byclient', ...(theBlockDb || [])]);
+  const blockDb = new Set(['handserver', ...(theBlockDb || [])]);
   const blockCol = new Map();
   if (theBlockCol) {
     theBlockCol.forEach(v => {
@@ -83,7 +82,7 @@ export const serverless = async (options: IOptions) => {
   if (RSAKey) {
     RSA.init(RSAKey);
   } else if (autoRSA) {
-    const col = db('byclient').collection('rsa');
+    const col = db('handserver').collection('rsa');
     const old = await col.findOne({ name: { $eq: autoRSA } });
     let clientKey = '';
 
@@ -122,7 +121,7 @@ export const serverless = async (options: IOptions) => {
     });
   }
 
-  app.post(url, async (req, rep) => {
+  app.post('/ws' + url, async (req, rep) => {
     if (!req.body || !req.body.code) {
       return rep.status(400).send(new Error('body or body.code is empty'));
     }

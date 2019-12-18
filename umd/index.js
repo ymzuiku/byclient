@@ -108,9 +108,9 @@ const canUseMethod = new Set([
     'find',
     'findOne',
 ]);
-const serverless = async (options) => {
-    const { url = '/less', checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, responseRSA, autoRSA, RSAKey, rsaURL = '/rsa', bitSpace = '|;|', } = options;
-    const blockDb = new Set(['byclient', ...(theBlockDb || [])]);
+const createLess = async (options) => {
+    const { checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, responseRSA, autoRSA, rsaURL = '/rsa', } = options;
+    const blockDb = new Set(['handserver', ...(theBlockDb || [])]);
     const blockCol = new Map();
     if (theBlockCol) {
         theBlockCol.forEach(v => {
@@ -119,11 +119,9 @@ const serverless = async (options) => {
         });
     }
     let RSA = createRSA();
-    if (RSAKey) {
-        RSA.init(RSAKey);
-    }
-    else if (autoRSA) {
-        const col = db('byclient').collection('rsa');
+    if (autoRSA && !global.isAddRsaURl) {
+        global.isAddRsaURl = true;
+        const col = db('handserver').collection('rsa');
         const old = await col.findOne({ name: { $eq: autoRSA } });
         let clientKey = '';
         if (!old) {
@@ -157,20 +155,20 @@ const serverless = async (options) => {
             return rep.send(clientKey);
         });
     }
-    app.post(url, async (req, rep) => {
-        if (!req.body || !req.body.code) {
-            return rep.status(400).send(new Error('body or body.code is empty'));
+    async function event(reqBody, send) {
+        if (!reqBody || !reqBody.code) {
+            return send(new Error('body or body.code is empty'));
         }
-        const realData = JSON.parse(RSA.decode(req.body.code));
+        const realData = JSON.parse(RSA.decode(reqBody.code));
         if (checkTime) {
             const nowTime = Date.now();
             if (realData._checkTime < nowTime - checkTime || realData._checkTime > nowTime + checkTime) {
-                return rep.status(400).send(new Error('no permission[1]!'));
+                return send(new Error('no permission[1]!'));
             }
         }
         if (checkKey) {
             if (realData._checkKey !== checkKey) {
-                return rep.status(400).send(new Error('no permission[2]!'));
+                return send(new Error('no permission[2]!'));
             }
         }
         const body = realData.events ? realData.events : [realData];
@@ -178,7 +176,7 @@ const serverless = async (options) => {
         const recall = async () => {
             // 如果 event 溢出
             if (nowEvent > body.length - 1) {
-                return rep.status(500).send(new Error('event is out'));
+                return send(new Error('event is out'));
             }
             // 计算是否是最后一个
             let isNeedSend = false;
@@ -187,16 +185,16 @@ const serverless = async (options) => {
             }
             let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, remove, } = body[nowEvent];
             if (blockDb && blockDb.has(dbName)) {
-                return rep.status(400).send(new Error('no permission[3]!'));
+                return send(new Error('no permission[3]!'));
             }
             if (blockCol && blockCol.has(colName)) {
                 const colBlockMethod = blockCol.get(colName);
                 if (colBlockMethod === 'all' || method.indexOf(colBlockMethod) > -1) {
-                    return rep.status(400).send(new Error('no permission[4]!'));
+                    return send(new Error('no permission[4]!'));
                 }
             }
             if (!canUseMethod.has(method)) {
-                return rep.status(400).send(new Error(`can not use "${method}" method`));
+                return send(new Error(`can not use "${method}" method`));
             }
             const col = db(dbName).collection(colName);
             if (argsSha256) {
@@ -245,7 +243,7 @@ const serverless = async (options) => {
                         }
                     }
                     if (isLockerError) {
-                        return rep.status(400).send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
+                        return send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
                     }
                 }
             }
@@ -255,7 +253,7 @@ const serverless = async (options) => {
             }
             if (block) {
                 if (!data) {
-                    return rep.status(400).send(new Error('block: data void'));
+                    return send(new Error('block: data void'));
                 }
                 const keys = Object.keys(block);
                 let blockError = null;
@@ -268,7 +266,7 @@ const serverless = async (options) => {
                     }
                 }
                 if (blockError) {
-                    return rep.status(400).send(blockError);
+                    return send(blockError);
                 }
             }
             if (!isNeedSend) {
@@ -277,7 +275,7 @@ const serverless = async (options) => {
                 return;
             }
             if (!data) {
-                return rep.status(200).send({ code: RSA.encode({ mes: 'data is empty' }) });
+                return send({ code: RSA.encode({ mes: 'data is empty' }) });
             }
             if (data) {
                 const { connection, message, ...sendData } = data;
@@ -286,10 +284,18 @@ const serverless = async (options) => {
                 allTrim.forEach(key => {
                     lodash.set(sendData, key, undefined);
                 });
-                return rep.status(200).send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
+                return send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
             }
         };
         await recall();
+    }
+    return event;
+};
+
+const restfulLess = async (options) => {
+    const less = await createLess(options);
+    app.post(options.url, async (req, rep) => {
+        less(req.body, rep.send);
     });
 };
 
@@ -314,6 +320,6 @@ exports.app = app;
 exports.controllersLoader = controllersLoader;
 exports.createRSA = createRSA;
 exports.db = db;
-exports.serverless = serverless;
+exports.restfulLess = restfulLess;
 exports.setCors = setCors;
 exports.sha256 = sha256;

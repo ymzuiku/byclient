@@ -1,6 +1,6 @@
 {
-  "name": "byclient",
-  "version": "0.1.3",
+  "name": "handserver",
+  "version": "0.0.1",
   "main": "umd/index.js",
   "types": "umd/index.d.ts",
   "license": "MIT",
@@ -8,7 +8,7 @@
     "lib": "node rollup.js",
     "start": "node rollup.js -w & nodemon example/index.js"
   },
-  "repository": "ymzuiku/byclient",
+  "repository": "ymzuiku/handserver",
   "author": "pillar <ymblender@gmail.com>",
   "dependencies": {
     "@types/fs-extra": "^8.0.1",
@@ -16,13 +16,15 @@
     "@types/mongodb": "^3.3.6",
     "@types/node": "^12.7.5",
     "@types/node-rsa": "^1.0.0",
+    "@types/ws": "^6.0.4",
     "cryptojs": "^2.5.3",
     "fastify": "^2.11.0",
     "fastify-cors": "^2.1.3",
     "fs-extra": "^8.1.0",
     "lodash": "^4.17.15",
     "mongodb": "^3.4.0",
-    "node-rsa": "^1.0.7"
+    "node-rsa": "^1.0.7",
+    "ws": "^7.2.1"
   },
   "devDependencies": {
     "@types/jest": "^24.0.18",
