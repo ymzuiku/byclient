@@ -1,7 +1,7 @@
 import NodeRSA from 'node-rsa';
 
 export interface IRSA {
-  priateKey: NodeRSA;
+  privateKey: NodeRSA;
   publicKey: NodeRSA;
   init: (keyData: string) => void;
   decode: (text: string) => string;
@@ -16,18 +16,18 @@ export interface IRSA {
 
 export const createRSA = () => {
   const RSA: IRSA = {
-    priateKey: null as any,
+    privateKey: null as any,
     publicKey: null as any,
     init: keyData => {
       let [a, b] = keyData.split('-----END PUBLIC KEY-----');
       a += `-----END PUBLIC KEY-----`;
 
       RSA.publicKey = new NodeRSA({ b: 1024 });
-      RSA.priateKey = new NodeRSA({ b: 1024 });
+      RSA.privateKey = new NodeRSA({ b: 1024 });
       RSA.publicKey.setOptions({ encryptionScheme: 'pkcs1' });
-      RSA.priateKey.setOptions({ encryptionScheme: 'pkcs1' });
+      RSA.privateKey.setOptions({ encryptionScheme: 'pkcs1' });
       RSA.publicKey.importKey(a, 'public');
-      RSA.priateKey.importKey(b, 'private');
+      RSA.privateKey.importKey(b, 'private');
     },
     createKeys: () => {
       const client = new NodeRSA({ b: 1024 });
@@ -60,7 +60,7 @@ export const createRSA = () => {
       if (!RSA.publicKey) {
         return text;
       }
-      return RSA.priateKey.encryptPrivate(text, 'base64');
+      return RSA.privateKey.encryptPrivate(text, 'base64');
     },
   };
 
