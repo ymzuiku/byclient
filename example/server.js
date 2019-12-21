@@ -12,14 +12,12 @@ const start = async () => {
     reducer: {
       // 若访问的是 product 数据库，并且编辑的是 user 表，进行处理：
       'test:test': async data => {
-        // 拦截所有非查询操作
+        // 若返回的对象有error属性，表示拦截后续的行为，并且把对象返回给客户端
         if (data.method.indexOf('find') > -1) {
-          // 若返回的对象有error属性，表示拦截后续的行为，并且把对象返回给客户端
-
-          if (!handserver.reducerHelper.checkFilter(data.args[0], ['name.$eq||name.$eq2'])) {
+          // 检查 args[0] 是否有 {name: {$eq: xxxx}} 或 {name: {$ls: xxxx}}, 若没有，返回错误
+          if (!handserver.reducerHelper.checkFilter(data.args[0], ['name.$eq||name.$ls'])) {
             return {
               'name.$eq': false,
-              // data,
               error: 'can not edit product:user',
             };
           }

@@ -68,7 +68,7 @@ function getByDbAndCol(obj, dbName, colName) {
     return null;
 }
 const createLess = async (options) => {
-    const { reducer = {} } = options;
+    const { reducer = {}, onlyOpenCol, onlyOpenDb } = options;
     // 请求事件
     async function event(reqBody) {
         let out = { error: 'recall no run' };
@@ -88,6 +88,14 @@ const createLess = async (options) => {
                 isNeedSend = true;
             }
             let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, remove, } = body[eventNumber];
+            dbName = dbName.trim();
+            colName = colName.trim();
+            if (onlyOpenDb && !onlyOpenDb.has(dbName)) {
+                return (out = { error: `permission[db]: ${dbName} is private` });
+            }
+            if (onlyOpenCol && !onlyOpenCol.has(colName)) {
+                return (out = { error: `permission[col]: ${colName} is private` });
+            }
             if (!canUseMethod.has(method)) {
                 return (out = { error: `can not use "${method}" method` });
             }

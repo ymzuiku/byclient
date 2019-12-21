@@ -16,32 +16,39 @@ const start = async () => {
   // 启动 restful-less 服务
   await handserver.setServerLess({
     url: '/less',
-    // 是否开启 websocket
+    // [可选]是否开启 websocket
     useWss: true,
+    // [可选]只开启某些数据库
+    onlyOpenDb: new Set(['development', 'production', 'test', 'release']),
+    // [可选]只开启某些表
+    onlyOpenCol: new Set(['user', 'dev', 'test', 'product']),
+    // [可选]对某些请求做权限管理或接管行为
     reducer: {
       // 若访问的是 product 数据库，并且编辑的是 user 表，进行处理：
       'product:user': (data) {
-        // 拦截所有非查询操作
-        if (data.method.index('find') === -1) {
-          // 若返回的对象有error属性，表示拦截后续的行为，并且把 error 返回给客户端
-          return {
-            error: new Error('can not edit product:user'),
-          };
+        // 若返回的对象有error属性，表示拦截后续的行为，并且把对象返回给客户端
+        if (data.method.indexOf('find') > -1) {
+          // 检查 args[0] 是否有 {name: {$eq: xxxx}} 或 {name: {$ls: xxxx}}, 若没有，返回错误
+          if (!handserver.reducerHelper.checkFilter(data.args[0], ['name.$eq||name.$ls'])) {
+            return {
+              'name.$eq': false,
+              error: 'can not edit product:user',
+            };
+          }
         }
-        if (data.method.index('update') > -1) {
+        if (data.method.indexOf('update') > -1) {
           // 若返回了 nextData，将使用 nextData 替换原有的body
           return {
             nextData: {
               // 这里我们也可以修改 data，来干涉后续的行为
-              args:[{...args[0], password: data.password}, args[1]],
+              args: [{ ...args[0], password: data.password }, args[1]],
               ...data,
-            }
-          }
+            },
+          };
         }
 
         // 若什么都没返回，将不做处理
         return;
-      }
     },
   });
 

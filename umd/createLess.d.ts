@@ -19,6 +19,8 @@ interface IBodyData {
 export interface ILessOptions {
     url?: string;
     useWss?: boolean;
+    onlyOpenDb?: Set<string>;
+    onlyOpenCol?: Set<string>;
     reducer?: {
         [dbAndCol: string]: (data: IBodyData, col: Collection<any>) => IReducerBack;
     };

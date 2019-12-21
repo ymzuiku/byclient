@@ -38,6 +38,8 @@ const canUseMethod = new Set([
 export interface ILessOptions {
   url?: string;
   useWss?: boolean;
+  onlyOpenDb?: Set<string>;
+  onlyOpenCol?: Set<string>;
   reducer?: { [dbAndCol: string]: (data: IBodyData, col: Collection<any>) => IReducerBack };
 }
 
@@ -53,7 +55,7 @@ function getByDbAndCol(obj: any, dbName: string, colName: string) {
 }
 
 export const createLess = async (options: ILessOptions) => {
-  const { reducer = {} } = options;
+  const { reducer = {}, onlyOpenCol, onlyOpenDb } = options;
 
   // 请求事件
   async function event(reqBody: any) {
@@ -89,6 +91,17 @@ export const createLess = async (options: ILessOptions) => {
         argsObjectId,
         remove,
       } = body[eventNumber];
+
+      dbName = dbName.trim();
+      colName = colName.trim();
+
+      if (onlyOpenDb && !onlyOpenDb.has(dbName)) {
+        return (out = { error: `permission[db]: ${dbName} is private` });
+      }
+
+      if (onlyOpenCol && !onlyOpenCol.has(colName)) {
+        return (out = { error: `permission[col]: ${colName} is private` });
+      }
 
       if (!canUseMethod.has(method)) {
         return (out = { error: `can not use "${method}" method` });
