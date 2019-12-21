@@ -1,10 +1,10 @@
 import fastify from 'fastify';
 import fastifyCors from 'fastify-cors';
-import { createLess, ILessOptions } from './createLessRSA';
+import { createLess, ILessOptions } from './createLess';
 import { createWss } from './createWss';
 
 export const app = fastify({
-  logger: true,
+  logger: process.env.log !== 'false',
   disableRequestLogging: true,
 });
 

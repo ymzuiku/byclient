@@ -8,8 +8,6 @@ const start = async () => {
   await handserver.setRestfulLess({
     url: '/less',
     useWss: true,
-    checkKey: '123456',
-    checkTime: 60 * 1000 * 15,
     checkFilter: {
       dev_test: {
         filter: [['$eq.user', '$eq.password'], '$eq:token'],

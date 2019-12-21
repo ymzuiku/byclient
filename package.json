@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "lib": "node rollup.js",
-    "start": "node rollup.js -w & nodemon example/index.js"
+    "start": "node rollup.js -w & nodemon example/server.js"
   },
   "repository": "ymzuiku/handserver",
   "author": "pillar <ymblender@gmail.com>",

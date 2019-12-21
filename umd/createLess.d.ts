@@ -14,7 +14,9 @@ export interface ILessOptions {
     impose?: IImpose;
     blockDb?: string[];
     blockCol?: string[];
+    autoRSA?: string;
     rsaURL?: string;
+    responseRSA?: boolean;
 }
 export declare const createLess: (options: ILessOptions) => Promise<(reqBody: any, send: any) => Promise<any>>;
 export {};
