@@ -4,42 +4,47 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>Document</title>
-    <script src="https://unpkg.com/axios@0.19.0/dist/axios.min.js"></script>
-    <script src="https://unpkg.com/@nuage/jsencrypt@3.0.0-rc.1.5/jsencrypt.js"></script>
-    <script src="https://unpkg.com/handserver-client@0.1.7/umd/handserver-client.js"></script>
-    <script>
-      console.log(axios);
-      var client = HandserverClient({
-        url: 'http://0.0.0.0:4010/less',
-        checkKey: '123456',
-        privateKey: `
------BEGIN RSA PRIVATE KEY-----
-MIICXAIBAAKBgQCNcfM13k4EMXA6OvlT8t6DfQfAIIdwXB84FejbMMzdKRYZUmHT
-AsLaQcxIVd7eUhpUCjgJnSKpEI1gRByal3YGv0QAzTMzGE36EXjgJo0EUoAnBRAb
-XmOqI5T7GZqI+Ox8jvfDVA5yadwcVQVTwuXQwefuvNfJXKNu4RbcnuvHtwIDAQAB
-AoGAG9zsmhn2qGDMyMvBPcZECwbgNfqyc3HSPIwkWLleQdrMHaTa3GRY2gHIKh+w
-TX9C7Hcu3sXzg/Zcwy/nqpRXjWUo6XfFbRsHcJvLFglc+xuWNw/iR39V8FlN9ACE
-cBXqVdeLyHeXb45+uW3DbxX53IyeSGPYF9tyA0toc4k+5tECQQDXUVlOVxMBkgN3
-XqlBrRLkvXsPm0quGB+8wFZjcukHCiuwx8Q4tJKDMBJ4SyDcsKCG53G/pIlTmSSs
-sPQjSH0NAkEAqCt5MyH8yHnRp6HaKXcJA8PPGEpF7ccqH8uJGXPgnznZN/GSnJot
-1S0/6HMIjhD4GmzbVfKmuNoW24bixy4O0wJAPghIw2IgrqYja4ORHcPAGrhgONnT
-hR6cHiQHf3U+n3GVrsOOy4tyXms+FvwGBq64QMVzJvQ/QB9xynLck0GyDQJAZrh/
-RKNrA42daVZsqs1B3WHaeszLYA06hsdNTBXCy5+LNifB1RQ8EK2eDr9NJ3HoCkQZ
-yar4+YqFUbxXgzB37wJBAJcR/dMuic4qNLja1ZMLSfyY1TPSgdbetNnLResoHAr0
-vDaDEPapT7AMRgj1qXXGs0/d9MIDeobDQwLqMOXGPqc=
------END RSA PRIVATE KEY-----
-`,
-      });
-      client({
-        db: 'test',
-        col: 'test',
-        method: 'insertOne',
-        args: [{ name: 'dog', age: '11', createAt: Date.now() }],
-      }).then(function(res) {
-        console.log(res);
-      });
-    </script>
+    <title>Test client</title>
+    <script src="https://unpkg.com/xhr-ws@1.0.4/umd/xhr-ws.js"></script>
+    <!-- <script src="../../xhr-ws/umd/xhr-ws.js"></script> -->
   </head>
-  <body></body>
+  <body>
+    <!-- http example -->
+    <script>
+      var httpClient = createHttpClient('http://127.0.0.1:4010/less');
+
+      window.onHttpClick = function() {
+        httpClient({
+          db: 'test',
+          col: 'test',
+          method: 'insertOne',
+          args: [{ name: 'dog', age: '11', createAt: Date.now() }],
+        }).then(function(res) {
+          document.getElementById('response-http').innerHTML = JSON.stringify(res);
+        });
+      };
+    </script>
+    <button onclick="onHttpClick()">test http</button>
+    <div>response-http:</div>
+    <div id="response-http"></div>
+
+    <!-- websocket example -->
+    <script>
+      var wsClient = createWsClient('ws://127.0.0.1:4010');
+
+      window.onWsClick = function() {
+        wsClient({
+          db: 'test',
+          col: 'test',
+          method: 'find',
+          args: [{ name: { $eq: 'dog' } }, { name: 'dog', age: '22', createAt: Date.now() }],
+        }).then(function(res) {
+          document.getElementById('response-ws').innerHTML = JSON.stringify(res);
+        });
+      };
+    </script>
+    <button onclick="onWsClick()">test websocket</button>
+    <div>response-ws:</div>
+    <div id="response-ws"></div>
+  </body>
 </html>

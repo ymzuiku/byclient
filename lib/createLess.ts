@@ -1,23 +1,17 @@
-import { app } from './app';
 import { db } from './db';
-import { ObjectId } from 'mongodb';
+import { ObjectId, Collection } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
-import { createRSA } from './createRSA';
 
-interface IImpose {
-  [key: string]: {
-    /** 操作时必须设置的filter */
-    filter: any[];
-    /** 返回时默认修剪的对象 */
-    remove: string[];
-  };
+interface IReducerBack {
+  error: any;
+  nextData: any;
 }
 
-interface IEvent {
+interface IBodyData {
   db?: string;
   col?: string;
-  block: any;
+  block?: { [name: string]: any };
   method: string;
   args?: any[];
   // 用来标记需要转化为 sha256 的args路径
@@ -25,6 +19,7 @@ interface IEvent {
   // 用来标记需要转化为 ObjectId 的args路径
   argsObjectId?: string[];
   remove?: string[];
+  [other: string]: any;
 }
 
 const canUseMethod = new Set([
@@ -43,117 +38,42 @@ const canUseMethod = new Set([
 export interface ILessOptions {
   url?: string;
   useWss?: boolean;
-  checkTime?: number;
-  checkKey?: string;
-  impose?: IImpose;
-  blockDb?: string[];
-  blockCol?: string[];
-  autoRSA?: string;
-  rsaURL?: string;
-  responseRSA?: boolean;
+  reducer?: { [dbAndCol: string]: (data: IBodyData, col: Collection<any>) => IReducerBack };
+}
+
+function getByDbAndCol(obj: any, dbName: string, colName: string) {
+  if (obj[`${dbName}:*`]) {
+    return obj[`${dbName}:*`];
+  } else if (obj[`*:${colName}`]) {
+    return obj[`*:${colName}`];
+  } else if (obj[`${dbName}:${colName}`]) {
+    return obj[`${dbName}:${colName}`];
+  }
+  return null;
 }
 
 export const createLess = async (options: ILessOptions) => {
-  const {
-    checkKey,
-    checkTime,
-    impose = {},
-    blockDb: theBlockDb,
-    blockCol: theBlockCol,
-    responseRSA,
-    autoRSA,
-    rsaURL = '/rsa',
-  } = options;
-
-  const blockDb = new Set(['handserver', ...(theBlockDb || [])]);
-  const blockCol = new Map();
-  if (theBlockCol) {
-    theBlockCol.forEach(v => {
-      const [colName, ...colMethods] = v.split('.');
-      blockCol.set(colName, colMethods.join(','));
-    });
-  }
-
-  let RSA = createRSA();
-
-  if (autoRSA && !(global as any).isAddRsaURl) {
-    (global as any).isAddRsaURl = true;
-    const col = db('handserver').collection('rsa');
-    const old = await col.findOne({ name: { $eq: autoRSA } });
-    let clientKey = '';
-
-    if (!old) {
-      const keys = RSA.createKeys();
-      clientKey = keys.client;
-      RSA.init(keys.server);
-
-      await col.insertOne({
-        name: autoRSA,
-        ...keys,
-      });
-    } else {
-      clientKey = old.client;
-      RSA.init(old.server);
-    }
-
-    let errorGetAutoRSANumber = 0;
-
-    app.get(rsaURL, async (req, rep) => {
-      if (errorGetAutoRSANumber >= 5) {
-        return rep.send('error times');
-      }
-      // 如果查询请求连续5次错误，限制15分钟查询时间
-      if (req.query.name !== autoRSA) {
-        errorGetAutoRSANumber += 1;
-        if (errorGetAutoRSANumber >= 5) {
-          setTimeout(() => {
-            errorGetAutoRSANumber = 0;
-          }, 1000 * 60 * 60);
-        }
-        return rep.send(req.query);
-      }
-
-      return rep.send(clientKey);
-    });
-  }
+  const { reducer = {} } = options;
 
   // 请求事件
-  async function event(reqBody: any, send: any) {
-    if (!reqBody || !reqBody.code) {
-      return send(new Error('body or body.code is empty'));
-    }
-    const realData = JSON.parse(RSA.decode(reqBody.code));
-
-    // if have openData， replace openData to realData
-    const openData: any = reqBody.body.openData;
-    if (openData) {
-      set(realData, openData.path, openData.value);
+  async function event(reqBody: any) {
+    if (!reqBody) {
+      return { error: 'body or body.code is empty' };
     }
 
-    if (checkTime) {
-      const nowTime = Date.now();
-      if (realData._checkTime < nowTime - checkTime || realData._checkTime > nowTime + checkTime) {
-        return send(new Error('no permission[1]!'));
-      }
-    }
-    if (checkKey) {
-      if (realData._checkKey !== checkKey) {
-        return send(new Error('no permission[2]!'));
-      }
-    }
+    const body: IBodyData[] = reqBody.events ? reqBody.events : [reqBody];
 
-    const body: IEvent[] = realData.events ? realData.events : [realData];
-
-    let nowEvent = 0;
+    let eventNumber = 0;
 
     const recall = async () => {
       // 如果 event 溢出
-      if (nowEvent > body.length - 1) {
-        return send(new Error('event is out'));
+      if (eventNumber > body.length - 1) {
+        return { error: 'event is out' };
       }
+
       // 计算是否是最后一个
       let isNeedSend = false;
-      if (nowEvent === body.length - 1) {
+      if (eventNumber === body.length - 1) {
         isNeedSend = true;
       }
 
@@ -166,24 +86,13 @@ export const createLess = async (options: ILessOptions) => {
         argsSha256,
         argsObjectId,
         remove,
-      } = body[nowEvent];
-
-      if (blockDb && blockDb.has(dbName)) {
-        return send(new Error('no permission[3]!'));
-      }
-
-      if (blockCol && blockCol.has(colName)) {
-        const colBlockMethod = blockCol.get(colName);
-        if (colBlockMethod === 'all' || method.indexOf(colBlockMethod) > -1) {
-          return send(new Error('no permission[4]!'));
-        }
-      }
+      } = body[eventNumber];
 
       if (!canUseMethod.has(method)) {
-        return send(new Error(`can not use "${method}" method`));
+        return { error: `can not use "${method}" method` };
       }
-      const col = db(dbName).collection(colName);
 
+      // 处理argsSha256
       if (argsSha256) {
         argsSha256.forEach((p: string) => {
           const value = get(args, p);
@@ -204,49 +113,54 @@ export const createLess = async (options: ILessOptions) => {
         });
       }
 
-      // 处理参数和限制权限
-      if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-        const filter = impose[colName] && impose[colName].filter;
-        if (filter) {
-          let isLockerError = true;
-          for (let i = 0; i < filter.length; i++) {
-            const key = filter[i];
-            if (typeof key === 'string') {
-              const value = get(args[0], key);
-              if (value) {
-                isLockerError = false;
-                break;
-              }
-            } else {
-              let isHaveValue = 0;
-              for (let j = 0; j < key.length; j++) {
-                const subKey = key[j];
-                const value = get(args[0], subKey);
-                if (value) {
-                  isHaveValue += 1;
-                }
-              }
-              if (isHaveValue === key.length) {
-                isLockerError = false;
-                break;
-              }
-            }
-          }
-          if (isLockerError) {
-            return send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
-          }
+      const col = db(dbName).collection(colName);
+
+      const reducerEvent = getByDbAndCol(reducer, dbName, colName);
+
+      if (reducerEvent) {
+        const reducerBack = await reducerEvent(
+          {
+            db: dbName,
+            col: colName,
+            block,
+            method,
+            args,
+            argsSha256,
+            argsObjectId,
+            remove,
+          },
+          col,
+        );
+
+        if (reducerBack && reducerBack.error) {
+          return reducerBack;
+        }
+        if (reducerBack && reducerBack.nextData) {
+          dbName = reducerBack.nextData.db;
+          colName = reducerBack.nextData.col;
+          block = reducerBack.nextData.block;
+          method = reducerBack.nextData.method;
+          args = reducerBack.nextData.args;
+          argsSha256 = reducerBack.nextData.argsSha256;
+          argsObjectId = reducerBack.nextData.argsObjectId;
         }
       }
 
-      let data = await (col as any)[method](...args);
+      let response;
 
-      if (method === 'find') {
-        data = data.toArray();
+      try {
+        if (method === 'find') {
+          response = await (col as any)[method](...args).toArray();
+        } else {
+          response = await (col as any)[method](...args);
+        }
+      } catch (err) {
+        return { error: 'database method error', msg: err, info: { dbName, colName, method } };
       }
 
       if (block) {
-        if (!data) {
-          return send(new Error('block: data void'));
+        if (!response) {
+          return { error: 'block: data void' };
         }
         const keys = Object.keys(block);
         let blockError: any = null;
@@ -254,40 +168,42 @@ export const createLess = async (options: ILessOptions) => {
           const key = keys[i];
           const value = block[key];
 
-          if (get(data, key) !== block[key]) {
-            blockError = new Error(`block: ${key} is not ${value}`);
+          if (get(response, key) !== block[key]) {
+            blockError = `block: ${key} is not ${value}`;
             break;
           }
         }
 
         if (blockError) {
-          return send(blockError);
+          return { error: blockError };
         }
       }
       if (!isNeedSend) {
-        nowEvent += 1;
+        eventNumber += 1;
         await recall();
         return;
       }
 
-      if (!data) {
-        return send({ code: RSA.encode({ mes: 'data is empty' }) });
+      if (!response) {
+        return { mes: 'data is empty' };
       }
-      if (data) {
-        const { connection, message, ...sendData } = data;
+      if (response) {
+        const { connection, message, ...sendData } = response;
 
-        // 提出不需要返回的
-        const allTrim = new Set([...(remove || []), ...((impose[colName] && impose[colName].remove) || [])]);
+        // 剔除不需要返回的
+        const allTrim = new Set([...(remove || [])]);
 
         allTrim.forEach(key => {
           set(sendData, key, undefined);
         });
 
-        return send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
+        return { error: sendData };
       }
     };
 
-    await recall();
+    const response = await recall();
+
+    return response;
   }
 
   return event;

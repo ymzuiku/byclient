@@ -16,27 +16,44 @@ const start = async () => {
   // 启动 restful-less 服务
   await handserver.restfulLess({
     url: '/less',
-    // 若设定，会限定每个请求体的有效时间，此例子为前后不超过15分钟
-    checkTime: 1000 * 60 * 15,
-    // 若设定，会校验一个key，只有key正确时才有权限操作
-    checkKey: '123456',
-    // 拦截某些数据库的操作
-    blockDb: ['produc'],
-    // 拦截某些表的行为操作, 以下拦截 user 表的 delete 和 insert 相关的行为，并且拦截 pay 表的所有行为
-    blockCol: ['user.delete.insert', 'pay.all'],
-    // 针对某些表的一些限制, 提高安全性
-    impose: {
-      user: {
-        // 更新、删除某些表的内容时，操作必须添加的 filter
-        filter: [['$eq.user', '$eq.password'], '$eq:token'],
-        // 移除user表查询之后返回的数据
+    reducer: {
+      // 若访问的是 product 数据库，并且编辑的是 user 表，进行处理：
+      'product:user': (data) {
+        // 拦截所有非查询操作
+        if (data.method.index('find') === -1) {
+          // 若返回的对象有error属性，表示拦截后续的行为，并且把 error 返回给客户端
+          return {
+            error: new Error('can not edit product:user'),
+          };
+        }
+        if (data.method.index('update') > -1) {
+          // 若返回了 nextData，将使用 nextData 替换原有的body
+          return {
+            nextData: {
+              // 这里我们也可以修改 data，来干涉后续的行为
+              args:[{...args[0], password: data.password}, args[1]],
+              ...data,
+            }
+          }
+        }
+
+        // 若什么都没返回，将不做处理
+        return;
+      }
+    },
+    // blocker 是快捷拦截，理论上reducer可以实现所有blocker
+    blocker: {
+      'test:user': {
+        methods: {
+          // 更新、删除某些表的内容时，操作必须添加的 filter
+          update: [['$eq.user', '$eq.password'], '$eq:token'],
+          // 不允许操作 delete
+          delete: 'block',
+        },
+        // 移除最后返回的数据查询之后返回的数据
         remove: ['ops.0.password'],
       },
     },
-    // 开启 RSA 加密，自动配置RSA加密方案, 此密钥请设置较长且保留好
-    // 若前后端要更新 RSA 密钥，请更新这个密钥，并且重启服务器
-    // 开启 autoRSA，之后，可以通过访问服务 /rsa?name=the-password 拿到客户端密钥，此服务若失败5次，需要间隔1小时方可尝试
-    autoRSA: 'the-password',
   });
 
   try {
@@ -51,10 +68,6 @@ start();
 ```
 
 设置了 restfulLess 之后，大部分 mongodb 数据库的操作都迁移到了前端， client 请求。
-
-我们以开启了 autoRSA 加密方案为例，首先启动服务，然后访问以下链接拿到 client 的 RSA 加密密钥：
-
-`http://0.0.0.0:4010/rsa?name=the-password`
 
 接下来先为客户端创建一个请求方法 client:
 

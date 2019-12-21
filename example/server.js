@@ -5,17 +5,40 @@ const start = async () => {
 
   handserver.setCors();
 
-  await handserver.setRestfulLess({
+  await handserver.setServerLess({
     url: '/less',
     useWss: true,
-    checkFilter: {
-      dev_test: {
-        filter: [['$eq.user', '$eq.password'], '$eq:token'],
-        trim: [],
+    // 对每个匹配的请求做处理，通常此处做一些权限管理即可
+    reducer: {
+      // 若访问的是 product 数据库，并且编辑的是 user 表，进行处理：
+      'test:test': async data => {
+        // 拦截所有非查询操作
+        if (data.method.indexOf('find') > -1) {
+          // 若返回的对象有error属性，表示拦截后续的行为，并且把对象返回给客户端
+
+          if (!handserver.reducerHelper.checkFilter(data.args[0], ['name.$eq||name.$eq2'])) {
+            return {
+              'name.$eq': false,
+              // data,
+              error: 'can not edit product:user',
+            };
+          }
+        }
+        if (data.method.indexOf('update') > -1) {
+          // 若返回了 nextData，将使用 nextData 替换原有的body
+          return {
+            nextData: {
+              // 这里我们也可以修改 data，来干涉后续的行为
+              args: [{ ...args[0], password: data.password }, args[1]],
+              ...data,
+            },
+          };
+        }
+
+        // 若什么都没返回，将不做处理
+        return;
       },
     },
-    blockCol: ['user.delete.test'],
-    autoRSA: 'test',
   });
 
   try {

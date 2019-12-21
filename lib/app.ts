@@ -10,13 +10,14 @@ export const app = fastify({
 
 export const setCors = () => app.register(fastifyCors);
 
-export const setRestfulLess = async (options: ILessOptions) => {
+export const setServerLess = async (options: ILessOptions) => {
   const less = await createLess(options);
   app.post(options.url || '/less', async (req, rep) => {
-    less(req.body, rep.send);
+    const data = await less(req.body);
+    return rep.send(data);
   });
   if (options.useWss) {
-    return createWss({ server: app.server, lessEvent: less });
+    await createWss({ server: app.server, lessEvent: less });
   }
 
   return;

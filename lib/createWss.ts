@@ -28,12 +28,11 @@ const createWss = (params: IWSParams) => {
     ws.on('message', function incoming(data) {
       if (less) {
         const body = JSON.parse(data.toString());
-        const wsName = body.wsName;
-        const send = (value: any) => {
-          value.wsName = wsName;
-          ws.send(JSON.stringify(value));
-        };
-        less(body, send);
+        const _ws = body._ws;
+        less(body).then((response: any) => {
+          response._ws = _ws;
+          ws.send(JSON.stringify(response));
+        });
       }
       if (wss.onMessage) {
         wss.onMessage(ws);

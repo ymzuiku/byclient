@@ -6,11 +6,10 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var mongodb = require('mongodb');
 var WebSocket = _interopDefault(require('ws'));
-var fastify = _interopDefault(require('fastify'));
-var fastifyCors = _interopDefault(require('fastify-cors'));
 var lodash = require('lodash');
 var crypto = _interopDefault(require('crypto'));
-var NodeRSA = _interopDefault(require('node-rsa'));
+var fastify = _interopDefault(require('fastify'));
+var fastifyCors = _interopDefault(require('fastify-cors'));
 var fs = _interopDefault(require('fs-extra'));
 var path = require('path');
 
@@ -38,75 +37,10 @@ db.init = (uri = 'mongodb://127.0.0.1:27017', defaultDbName = 'test') => {
     });
 };
 
-const app = fastify({
-    logger: process.env.log !== 'false',
-    disableRequestLogging: true,
-});
-const setCors = () => app.register(fastifyCors);
-const setRestfulLess = async (options) => {
-    const less = await createLess(options);
-    app.post(options.url || '/less', async (req, rep) => {
-        less(req.body, rep.send);
-    });
-    if (options.useWss) {
-        return createWss({ server: app.server, lessEvent: less });
-    }
-    return;
-};
-
 const sha256 = (str, slat) => {
     const obj = crypto.createHash('sha256');
     obj.update(str + (slat ? slat : ''));
     return obj.digest('hex');
-};
-
-const createRSA = () => {
-    const RSA = {
-        privateKey: null,
-        publicKey: null,
-        init: keyData => {
-            let [a, b] = keyData.split('-----END PUBLIC KEY-----');
-            a += `-----END PUBLIC KEY-----`;
-            RSA.publicKey = new NodeRSA({ b: 1024 });
-            RSA.privateKey = new NodeRSA({ b: 1024 });
-            RSA.publicKey.setOptions({ encryptionScheme: 'pkcs1' });
-            RSA.privateKey.setOptions({ encryptionScheme: 'pkcs1' });
-            RSA.publicKey.importKey(a, 'public');
-            RSA.privateKey.importKey(b, 'private');
-        },
-        createKeys: () => {
-            const client = new NodeRSA({ b: 1024 });
-            const server = new NodeRSA({ b: 1024 });
-            client.setOptions({ encryptionScheme: 'pkcs1' });
-            server.setOptions({ encryptionScheme: 'pkcs1' });
-            const clientPublic = client.exportKey('public');
-            const clientPrivate = client.exportKey('private');
-            const serverPublic = server.exportKey('public');
-            const serverPrivate = server.exportKey('private');
-            return {
-                client: clientPrivate,
-                server: clientPublic + '\n' + serverPrivate,
-                baseClient: clientPublic + '\n' + clientPrivate,
-                baseServer: serverPublic + '\n' + serverPrivate,
-            };
-        },
-        decode: (text) => {
-            if (!RSA.publicKey) {
-                return text;
-            }
-            return RSA.publicKey.decryptPublic(text, 'utf8');
-        },
-        encode: (text) => {
-            if (typeof text !== 'string') {
-                text = JSON.stringify(text);
-            }
-            if (!RSA.publicKey) {
-                return text;
-            }
-            return RSA.privateKey.encryptPrivate(text, 'base64');
-        },
-    };
-    return RSA;
 };
 
 const canUseMethod = new Set([
@@ -121,101 +55,42 @@ const canUseMethod = new Set([
     'find',
     'findOne',
 ]);
+function getByDbAndCol(obj, dbName, colName) {
+    if (obj[`${dbName}:*`]) {
+        return obj[`${dbName}:*`];
+    }
+    else if (obj[`*:${colName}`]) {
+        return obj[`*:${colName}`];
+    }
+    else if (obj[`${dbName}:${colName}`]) {
+        return obj[`${dbName}:${colName}`];
+    }
+    return null;
+}
 const createLess = async (options) => {
-    const { checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, responseRSA, autoRSA, rsaURL = '/rsa', } = options;
-    const blockDb = new Set(['handserver', ...(theBlockDb || [])]);
-    const blockCol = new Map();
-    if (theBlockCol) {
-        theBlockCol.forEach(v => {
-            const [colName, ...colMethods] = v.split('.');
-            blockCol.set(colName, colMethods.join(','));
-        });
-    }
-    let RSA = createRSA();
-    if (autoRSA && !global.isAddRsaURl) {
-        global.isAddRsaURl = true;
-        const col = db('handserver').collection('rsa');
-        const old = await col.findOne({ name: { $eq: autoRSA } });
-        let clientKey = '';
-        if (!old) {
-            const keys = RSA.createKeys();
-            clientKey = keys.client;
-            RSA.init(keys.server);
-            await col.insertOne({
-                name: autoRSA,
-                ...keys,
-            });
-        }
-        else {
-            clientKey = old.client;
-            RSA.init(old.server);
-        }
-        let errorGetAutoRSANumber = 0;
-        app.get(rsaURL, async (req, rep) => {
-            if (errorGetAutoRSANumber >= 5) {
-                return rep.send('error times');
-            }
-            // 如果查询请求连续5次错误，限制15分钟查询时间
-            if (req.query.name !== autoRSA) {
-                errorGetAutoRSANumber += 1;
-                if (errorGetAutoRSANumber >= 5) {
-                    setTimeout(() => {
-                        errorGetAutoRSANumber = 0;
-                    }, 1000 * 60 * 60);
-                }
-                return rep.send(req.query);
-            }
-            return rep.send(clientKey);
-        });
-    }
+    const { reducer = {} } = options;
     // 请求事件
-    async function event(reqBody, send) {
-        if (!reqBody || !reqBody.code) {
-            return send(new Error('body or body.code is empty'));
+    async function event(reqBody) {
+        if (!reqBody) {
+            return { error: 'body or body.code is empty' };
         }
-        const realData = JSON.parse(RSA.decode(reqBody.code));
-        // if have openData， replace openData to realData
-        const openData = reqBody.body.openData;
-        if (openData) {
-            lodash.set(realData, openData.path, openData.value);
-        }
-        if (checkTime) {
-            const nowTime = Date.now();
-            if (realData._checkTime < nowTime - checkTime || realData._checkTime > nowTime + checkTime) {
-                return send(new Error('no permission[1]!'));
-            }
-        }
-        if (checkKey) {
-            if (realData._checkKey !== checkKey) {
-                return send(new Error('no permission[2]!'));
-            }
-        }
-        const body = realData.events ? realData.events : [realData];
-        let nowEvent = 0;
+        const body = reqBody.events ? reqBody.events : [reqBody];
+        let eventNumber = 0;
         const recall = async () => {
             // 如果 event 溢出
-            if (nowEvent > body.length - 1) {
-                return send(new Error('event is out'));
+            if (eventNumber > body.length - 1) {
+                return { error: 'event is out' };
             }
             // 计算是否是最后一个
             let isNeedSend = false;
-            if (nowEvent === body.length - 1) {
+            if (eventNumber === body.length - 1) {
                 isNeedSend = true;
             }
-            let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, remove, } = body[nowEvent];
-            if (blockDb && blockDb.has(dbName)) {
-                return send(new Error('no permission[3]!'));
-            }
-            if (blockCol && blockCol.has(colName)) {
-                const colBlockMethod = blockCol.get(colName);
-                if (colBlockMethod === 'all' || method.indexOf(colBlockMethod) > -1) {
-                    return send(new Error('no permission[4]!'));
-                }
-            }
+            let { db: dbName = 'test', col: colName = 'test', block, method, args = [], argsSha256, argsObjectId, remove, } = body[eventNumber];
             if (!canUseMethod.has(method)) {
-                return send(new Error(`can not use "${method}" method`));
+                return { error: `can not use "${method}" method` };
             }
-            const col = db(dbName).collection(colName);
+            // 处理argsSha256
             if (argsSha256) {
                 argsSha256.forEach((p) => {
                     const value = lodash.get(args, p);
@@ -232,81 +107,82 @@ const createLess = async (options) => {
                     }
                 });
             }
-            // 处理参数和限制权限
-            if (method.indexOf('update') > -1 || method.indexOf('delete') > -1) {
-                const filter = impose[colName] && impose[colName].filter;
-                if (filter) {
-                    let isLockerError = true;
-                    for (let i = 0; i < filter.length; i++) {
-                        const key = filter[i];
-                        if (typeof key === 'string') {
-                            const value = lodash.get(args[0], key);
-                            if (value) {
-                                isLockerError = false;
-                                break;
-                            }
-                        }
-                        else {
-                            let isHaveValue = 0;
-                            for (let j = 0; j < key.length; j++) {
-                                const subKey = key[j];
-                                const value = lodash.get(args[0], subKey);
-                                if (value) {
-                                    isHaveValue += 1;
-                                }
-                            }
-                            if (isHaveValue === key.length) {
-                                isLockerError = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (isLockerError) {
-                        return send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
-                    }
+            const col = db(dbName).collection(colName);
+            const reducerEvent = getByDbAndCol(reducer, dbName, colName);
+            if (reducerEvent) {
+                const reducerBack = await reducerEvent({
+                    db: dbName,
+                    col: colName,
+                    block,
+                    method,
+                    args,
+                    argsSha256,
+                    argsObjectId,
+                    remove,
+                }, col);
+                if (reducerBack && reducerBack.error) {
+                    return reducerBack;
+                }
+                if (reducerBack && reducerBack.nextData) {
+                    dbName = reducerBack.nextData.db;
+                    colName = reducerBack.nextData.col;
+                    block = reducerBack.nextData.block;
+                    method = reducerBack.nextData.method;
+                    args = reducerBack.nextData.args;
+                    argsSha256 = reducerBack.nextData.argsSha256;
+                    argsObjectId = reducerBack.nextData.argsObjectId;
                 }
             }
-            let data = await col[method](...args);
-            if (method === 'find') {
-                data = data.toArray();
+            let response;
+            try {
+                if (method === 'find') {
+                    response = await col[method](...args).toArray();
+                }
+                else {
+                    response = await col[method](...args);
+                }
+            }
+            catch (err) {
+                return { error: 'database method error', msg: err, info: { dbName, colName, method } };
             }
             if (block) {
-                if (!data) {
-                    return send(new Error('block: data void'));
+                if (!response) {
+                    return { error: 'block: data void' };
                 }
                 const keys = Object.keys(block);
                 let blockError = null;
                 for (let i = 0; i < keys.length; i++) {
                     const key = keys[i];
                     const value = block[key];
-                    if (lodash.get(data, key) !== block[key]) {
-                        blockError = new Error(`block: ${key} is not ${value}`);
+                    if (lodash.get(response, key) !== block[key]) {
+                        blockError = `block: ${key} is not ${value}`;
                         break;
                     }
                 }
                 if (blockError) {
-                    return send(blockError);
+                    return { error: blockError };
                 }
             }
             if (!isNeedSend) {
-                nowEvent += 1;
+                eventNumber += 1;
                 await recall();
                 return;
             }
-            if (!data) {
-                return send({ code: RSA.encode({ mes: 'data is empty' }) });
+            if (!response) {
+                return { mes: 'data is empty' };
             }
-            if (data) {
-                const { connection, message, ...sendData } = data;
-                // 提出不需要返回的
-                const allTrim = new Set([...(remove || []), ...((impose[colName] && impose[colName].remove) || [])]);
+            if (response) {
+                const { connection, message, ...sendData } = response;
+                // 剔除不需要返回的
+                const allTrim = new Set([...(remove || [])]);
                 allTrim.forEach(key => {
                     lodash.set(sendData, key, undefined);
                 });
-                return send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
+                return { error: sendData };
             }
         };
-        await recall();
+        const response = await recall();
+        return response;
     }
     return event;
 };
@@ -325,12 +201,11 @@ const createWss = (params) => {
         ws.on('message', function incoming(data) {
             if (less) {
                 const body = JSON.parse(data.toString());
-                const wsName = body.wsName;
-                const send = (value) => {
-                    value.wsName = wsName;
-                    ws.send(JSON.stringify(value));
-                };
-                less(body, send);
+                const _ws = body._ws;
+                less(body).then((response) => {
+                    response._ws = _ws;
+                    ws.send(JSON.stringify(response));
+                });
             }
             if (wss.onMessage) {
                 wss.onMessage(ws);
@@ -338,6 +213,23 @@ const createWss = (params) => {
         });
     });
     return wss;
+};
+
+const app = fastify({
+    logger: process.env.log !== 'false',
+    disableRequestLogging: true,
+});
+const setCors = () => app.register(fastifyCors);
+const setServerLess = async (options) => {
+    const less = await createLess(options);
+    app.post(options.url || '/less', async (req, rep) => {
+        const data = await less(req.body);
+        return rep.send(data);
+    });
+    if (options.useWss) {
+        await createWss({ server: app.server, lessEvent: less });
+    }
+    return;
 };
 
 const controllersLoader = (dir, indexOf, params) => {
@@ -357,10 +249,37 @@ const controllersLoader = (dir, indexOf, params) => {
     });
 };
 
+function checkFilter(obj, matchs) {
+    let isMatch = true;
+    for (let i = 0; i < matchs.length; i++) {
+        const match = matchs[i];
+        const list = match.split('||');
+        console.log(list);
+        let subMatch = false;
+        list.forEach(m => {
+            const txt = m.trim();
+            if (lodash.get(obj, txt)) {
+                subMatch = true;
+            }
+        });
+        if (!subMatch) {
+            isMatch = false;
+            break;
+        }
+    }
+    return isMatch;
+}
+
+var reducerHelper = /*#__PURE__*/Object.freeze({
+  __proto__: null,
+  checkFilter: checkFilter
+});
+
 exports.app = app;
 exports.controllersLoader = controllersLoader;
 exports.createWss = createWss;
 exports.db = db;
+exports.reducerHelper = reducerHelper;
 exports.setCors = setCors;
-exports.setRestfulLess = setRestfulLess;
+exports.setServerLess = setServerLess;
 exports.sha256 = sha256;

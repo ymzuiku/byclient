@@ -1,7 +1,8 @@
 import { db } from './db';
 import { createWss } from './createWss';
-import { app, setCors, setRestfulLess } from './app';
+import { app, setCors, setServerLess } from './app';
 import { sha256 } from './sha256';
 import { controllersLoader } from './controllersLoader';
+import * as reducerHelper from './reducerHelper';
 
-export { db, app, createWss, setRestfulLess, controllersLoader, sha256, setCors };
+export { reducerHelper, db, app, createWss, setServerLess, controllersLoader, sha256, setCors };
