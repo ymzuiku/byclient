@@ -2,7 +2,7 @@
 
 基于 `fastify` 的 serverless
 
-## restfulLess
+## serverLess
 
 ```js
 const handserver = require('handserver');
@@ -14,8 +14,10 @@ const start = async () => {
   handserver.setCors();
 
   // 启动 restful-less 服务
-  await handserver.restfulLess({
+  await handserver.setServerLess({
     url: '/less',
+    // 是否开启 websocket
+    useWss: true,
     reducer: {
       // 若访问的是 product 数据库，并且编辑的是 user 表，进行处理：
       'product:user': (data) {
@@ -41,19 +43,6 @@ const start = async () => {
         return;
       }
     },
-    // blocker 是快捷拦截，理论上reducer可以实现所有blocker
-    blocker: {
-      'test:user': {
-        methods: {
-          // 更新、删除某些表的内容时，操作必须添加的 filter
-          update: [['$eq.user', '$eq.password'], '$eq:token'],
-          // 不允许操作 delete
-          delete: 'block',
-        },
-        // 移除最后返回的数据查询之后返回的数据
-        remove: ['ops.0.password'],
-      },
-    },
   });
 
   try {
@@ -72,43 +61,15 @@ start();
 接下来先为客户端创建一个请求方法 client:
 
 ```js
-const Axios = require('axios').default;
-const NodeRSA = require('node-rsa');
+import { createHttpClient, createWsClient } from 'xhr-ws';
+const client = createHttpClient('http://127.0.0.1:4010/less');
+```
 
-const encode = new NodeRSA({ b: 1024 });
-encode.setOptions({ encryptionScheme: 'pkcs1' });
-encode.importKey(
-  `
------BEGIN RSA PRIVATE KEY-----
-MIIBPAIBAAJBAM0weU8cwkKXu0+VG+7L5KJkX3ePIdfva6LL4uF06YeR9YrTGHhd
-5/sS7M81MfFzYylLCqO94RJNtgih8MT/essCAwEAAQJAeUAGv0goRv+wkTN0oSTd
-Q1T60QTEo/x352iB9maGxTPcLZuM3NwwcwtKN4cZ9aL53Y9SMpYdCjpx67NWcx2S
-oQIhAPpmH1s+kL1wTPnl6QXcoXoiVnZh2oFc/nfq2z4CM6fxAiEA0cd27V3OzAFs
-saDiqShwoqE2wCaf+8pH805EpsDkansCIQCWg4BhtpAGb1S1+k9B6MdfxPg4HMXd
-cOq9Znz3Hxex4QIhAIjDR498huONUjWDtAGgMb505+Lhy4810y6WKj+kpcWdAiEA
-8XJBxFjhQuE28aRbV+fVuiHQX1LHOu2FPGc2BewB/eQ=
------END RSA PRIVATE KEY-----
-`,
-  'private',
-);
-const client = async data => {
-  return new Promise(cb => {
-    Axios.post(
-      'http://127.0.0.1:4010/less',
-      { code: encode.encryptPrivate({ ...data, _checkTime: Date.now(), _checkKey: '123456' }, 'base64') },
-      {
-        headers: { 'content-type': 'application/json' },
-      },
-    )
-      .then(res => {
-        if (res.data) {
-          return cb(res.data);
-        }
-        return res;
-      })
-      .catch(err => cb(err.response ? err.response.data : err));
-  });
-};
+如果开启了 websocket， 我们也可用 websocket 代替 http：
+
+```js
+import { createWsClient } from 'xhr-ws';
+const client = createWsClient('ws://127.0.0.1:4010');
 ```
 
 客户端操作数据库，暂时仅支持以下方法:
