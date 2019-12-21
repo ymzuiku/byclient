@@ -7,15 +7,14 @@ interface IImpose {
     };
 }
 export interface ILessOptions {
-    url: string;
+    url?: string;
+    useWss?: boolean;
     checkTime?: number;
     checkKey?: string;
     impose?: IImpose;
     blockDb?: string[];
     blockCol?: string[];
-    autoRSA?: boolean;
     rsaURL?: string;
-    responseRSA?: boolean;
 }
 export declare const createLess: (options: ILessOptions) => Promise<(reqBody: any, send: any) => Promise<any>>;
 export {};

@@ -13,6 +13,8 @@ db.init = (uri = 'mongodb://127.0.0.1:27017', defaultDbName = 'test') => {
   db.defaultDbName = defaultDbName;
   return new Promise(res => {
     MongoClient.connect(uri, {
+      connectTimeoutMS: 3000,
+      socketTimeoutMS: 3000,
       // useFindAndModify: false,
       useNewUrlParser: true,
       useUnifiedTopology: true,

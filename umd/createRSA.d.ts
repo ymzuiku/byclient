@@ -1,6 +1,6 @@
 import NodeRSA from 'node-rsa';
 export interface IRSA {
-    priateKey: NodeRSA;
+    privateKey: NodeRSA;
     publicKey: NodeRSA;
     init: (keyData: string) => void;
     decode: (text: string) => string;

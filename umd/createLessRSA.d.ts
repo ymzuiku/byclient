@@ -6,18 +6,17 @@ interface IImpose {
         remove: string[];
     };
 }
-interface IOptions {
-    url: string;
+export interface ILessOptions {
+    url?: string;
+    useWss?: boolean;
     checkTime?: number;
     checkKey?: string;
     impose?: IImpose;
     blockDb?: string[];
     blockCol?: string[];
     autoRSA?: boolean;
-    RSAKey?: string;
     rsaURL?: string;
-    bitSpace?: string;
     responseRSA?: boolean;
 }
-export declare const serverless: (options: IOptions) => Promise<void>;
+export declare const createLess: (options: ILessOptions) => Promise<(reqBody: any, send: any) => Promise<any>>;
 export {};

@@ -1,9 +1,7 @@
-import { app } from './app';
 import { db } from './db';
 import { ObjectId } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
-import { createRSA } from './createRSA';
 
 interface IImpose {
   [key: string]: {
@@ -41,30 +39,20 @@ const canUseMethod = new Set([
 ]);
 
 export interface ILessOptions {
-  url: string;
+  url?: string;
+  useWss?: boolean;
   checkTime?: number;
   checkKey?: string;
   impose?: IImpose;
   blockDb?: string[];
   blockCol?: string[];
-  autoRSA?: boolean;
   rsaURL?: string;
-  responseRSA?: boolean;
 }
 
 export const createLess = async (options: ILessOptions) => {
-  const {
-    checkKey,
-    checkTime,
-    impose = {},
-    blockDb: theBlockDb,
-    blockCol: theBlockCol,
-    responseRSA,
-    autoRSA,
-    rsaURL = '/rsa',
-  } = options;
+  const { checkKey, checkTime, impose = {}, blockDb: theBlockDb, blockCol: theBlockCol, rsaURL = '/rsa' } = options;
 
-  const blockDb = new Set(['handserver', ...(theBlockDb || [])]);
+  const blockDb = new Set(['admin', ...(theBlockDb || [])]);
   const blockCol = new Map();
   if (theBlockCol) {
     theBlockCol.forEach(v => {
@@ -73,55 +61,18 @@ export const createLess = async (options: ILessOptions) => {
     });
   }
 
-  let RSA = createRSA();
-
-  if (autoRSA && !(global as any).isAddRsaURl) {
-    (global as any).isAddRsaURl = true;
-    const col = db('handserver').collection('rsa');
-    const old = await col.findOne({ name: { $eq: autoRSA } });
-    let clientKey = '';
-
-    if (!old) {
-      const keys = RSA.createKeys();
-      clientKey = keys.client;
-      RSA.init(keys.server);
-
-      await col.insertOne({
-        name: autoRSA,
-        ...keys,
-      });
-    } else {
-      clientKey = old.client;
-      RSA.init(old.server);
-    }
-
-    let errorGetAutoRSANumber = 0;
-
-    app.get(rsaURL, async (req, rep) => {
-      if (errorGetAutoRSANumber >= 5) {
-        return rep.send('error times');
-      }
-      // 如果查询请求连续5次错误，限制15分钟查询时间
-      if (req.query.name !== autoRSA) {
-        errorGetAutoRSANumber += 1;
-        if (errorGetAutoRSANumber >= 5) {
-          setTimeout(() => {
-            errorGetAutoRSANumber = 0;
-          }, 1000 * 60 * 60);
-        }
-        return rep.send(req.query);
-      }
-
-      return rep.send(clientKey);
-    });
-  }
-
+  // 请求事件
   async function event(reqBody: any, send: any) {
     if (!reqBody || !reqBody.code) {
       return send(new Error('body or body.code is empty'));
     }
+    const realData = JSON.parse(reqBody.code);
 
-    const realData = JSON.parse(RSA.decode(reqBody.code));
+    // if have openData， replace openData to realData
+    const openData: any = reqBody.body.openData;
+    if (openData) {
+      set(realData, openData.path, openData.value);
+    }
 
     if (checkTime) {
       const nowTime = Date.now();
@@ -264,7 +215,7 @@ export const createLess = async (options: ILessOptions) => {
       }
 
       if (!data) {
-        return send({ code: RSA.encode({ mes: 'data is empty' }) });
+        return send({ mes: 'data is empty' });
       }
       if (data) {
         const { connection, message, ...sendData } = data;
@@ -276,7 +227,7 @@ export const createLess = async (options: ILessOptions) => {
           set(sendData, key, undefined);
         });
 
-        return send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
+        return send(sendData);
       }
     };
 

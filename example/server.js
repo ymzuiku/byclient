@@ -5,8 +5,9 @@ const start = async () => {
 
   handserver.setCors();
 
-  await handserver.restfulLess({
+  await handserver.setRestfulLess({
     url: '/less',
+    useWss: true,
     checkKey: '123456',
     checkTime: 60 * 1000 * 15,
     checkFilter: {

@@ -4,7 +4,6 @@ import { ObjectId } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
 import { createRSA } from './createRSA';
-import ws from 'ws';
 
 interface IImpose {
   [key: string]: {
@@ -41,22 +40,21 @@ const canUseMethod = new Set([
   'findOne',
 ]);
 
-interface IOptions {
-  url: string;
+export interface ILessOptions {
+  url?: string;
+  useWss?: boolean;
   checkTime?: number;
   checkKey?: string;
   impose?: IImpose;
   blockDb?: string[];
   blockCol?: string[];
   autoRSA?: boolean;
-  RSAKey?: string;
   rsaURL?: string;
   responseRSA?: boolean;
 }
 
-export const wsLess = async (options: IOptions) => {
+export const createLess = async (options: ILessOptions) => {
   const {
-    url = '/less',
     checkKey,
     checkTime,
     impose = {},
@@ -64,7 +62,6 @@ export const wsLess = async (options: IOptions) => {
     blockCol: theBlockCol,
     responseRSA,
     autoRSA,
-    RSAKey,
     rsaURL = '/rsa',
   } = options;
 
@@ -79,9 +76,8 @@ export const wsLess = async (options: IOptions) => {
 
   let RSA = createRSA();
 
-  if (RSAKey) {
-    RSA.init(RSAKey);
-  } else if (autoRSA) {
+  if (autoRSA && !(global as any).isAddRsaURl) {
+    (global as any).isAddRsaURl = true;
     const col = db('handserver').collection('rsa');
     const old = await col.findOne({ name: { $eq: autoRSA } });
     let clientKey = '';
@@ -121,22 +117,28 @@ export const wsLess = async (options: IOptions) => {
     });
   }
 
-  app.post('/ws' + url, async (req, rep) => {
-    if (!req.body || !req.body.code) {
-      return rep.status(400).send(new Error('body or body.code is empty'));
+  // 请求事件
+  async function event(reqBody: any, send: any) {
+    if (!reqBody || !reqBody.code) {
+      return send(new Error('body or body.code is empty'));
     }
+    const realData = JSON.parse(RSA.decode(reqBody.code));
 
-    const realData = JSON.parse(RSA.decode(req.body.code));
+    // if have openData， replace openData to realData
+    const openData: any = reqBody.body.openData;
+    if (openData) {
+      set(realData, openData.path, openData.value);
+    }
 
     if (checkTime) {
       const nowTime = Date.now();
       if (realData._checkTime < nowTime - checkTime || realData._checkTime > nowTime + checkTime) {
-        return rep.status(400).send(new Error('no permission[1]!'));
+        return send(new Error('no permission[1]!'));
       }
     }
     if (checkKey) {
       if (realData._checkKey !== checkKey) {
-        return rep.status(400).send(new Error('no permission[2]!'));
+        return send(new Error('no permission[2]!'));
       }
     }
 
@@ -147,7 +149,7 @@ export const wsLess = async (options: IOptions) => {
     const recall = async () => {
       // 如果 event 溢出
       if (nowEvent > body.length - 1) {
-        return rep.status(500).send(new Error('event is out'));
+        return send(new Error('event is out'));
       }
       // 计算是否是最后一个
       let isNeedSend = false;
@@ -167,18 +169,18 @@ export const wsLess = async (options: IOptions) => {
       } = body[nowEvent];
 
       if (blockDb && blockDb.has(dbName)) {
-        return rep.status(400).send(new Error('no permission[3]!'));
+        return send(new Error('no permission[3]!'));
       }
 
       if (blockCol && blockCol.has(colName)) {
         const colBlockMethod = blockCol.get(colName);
         if (colBlockMethod === 'all' || method.indexOf(colBlockMethod) > -1) {
-          return rep.status(400).send(new Error('no permission[4]!'));
+          return send(new Error('no permission[4]!'));
         }
       }
 
       if (!canUseMethod.has(method)) {
-        return rep.status(400).send(new Error(`can not use "${method}" method`));
+        return send(new Error(`can not use "${method}" method`));
       }
       const col = db(dbName).collection(colName);
 
@@ -231,7 +233,7 @@ export const wsLess = async (options: IOptions) => {
             }
           }
           if (isLockerError) {
-            return rep.status(400).send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
+            return send(new Error(`locker: master filter use ${JSON.stringify(filter)}`));
           }
         }
       }
@@ -244,7 +246,7 @@ export const wsLess = async (options: IOptions) => {
 
       if (block) {
         if (!data) {
-          return rep.status(400).send(new Error('block: data void'));
+          return send(new Error('block: data void'));
         }
         const keys = Object.keys(block);
         let blockError: any = null;
@@ -259,7 +261,7 @@ export const wsLess = async (options: IOptions) => {
         }
 
         if (blockError) {
-          return rep.status(400).send(blockError);
+          return send(blockError);
         }
       }
       if (!isNeedSend) {
@@ -269,7 +271,7 @@ export const wsLess = async (options: IOptions) => {
       }
 
       if (!data) {
-        return rep.status(200).send({ code: RSA.encode({ mes: 'data is empty' }) });
+        return send({ code: RSA.encode({ mes: 'data is empty' }) });
       }
       if (data) {
         const { connection, message, ...sendData } = data;
@@ -281,10 +283,12 @@ export const wsLess = async (options: IOptions) => {
           set(sendData, key, undefined);
         });
 
-        return rep.status(200).send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
+        return send(responseRSA ? { code: RSA.encode(sendData) } : sendData);
       }
     };
 
     await recall();
-  });
+  }
+
+  return event;
 };

@@ -1,10 +1,6 @@
-const Axios = require('axios').default;
-const NodeRSA = require('node-rsa');
+const createClient = require('../web-client');
 
-const encode = new NodeRSA({ b: 1024 });
-encode.setOptions({ encryptionScheme: 'pkcs1' });
-encode.importKey(
-  `
+const privateKey = `
 -----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQCNcfM13k4EMXA6OvlT8t6DfQfAIIdwXB84FejbMMzdKRYZUmHT
 AsLaQcxIVd7eUhpUCjgJnSKpEI1gRByal3YGv0QAzTMzGE36EXjgJo0EUoAnBRAb
@@ -20,29 +16,13 @@ RKNrA42daVZsqs1B3WHaeszLYA06hsdNTBXCy5+LNifB1RQ8EK2eDr9NJ3HoCkQZ
 yar4+YqFUbxXgzB37wJBAJcR/dMuic4qNLja1ZMLSfyY1TPSgdbetNnLResoHAr0
 vDaDEPapT7AMRgj1qXXGs0/d9MIDeobDQwLqMOXGPqc=
 -----END RSA PRIVATE KEY-----
-`,
-  'private',
-);
-const client = async data => {
-  return new Promise(cb => {
-    const code = encode.encryptPrivate({ ...data, _checkTime: Date.now(), _checkKey: '123456' }, 'base64');
+`;
 
-    Axios.post(
-      'http://127.0.0.1:4010/less',
-      { code },
-      {
-        headers: { 'content-type': 'application/json' },
-      },
-    )
-      .then(res => {
-        if (res.data) {
-          return cb(res.data);
-        }
-        return res;
-      })
-      .catch(err => cb(err.response ? err.response.data : err));
-  });
-};
+const client = createClient({
+  url: 'http://127.0.0.1:4010/less',
+  privateKey,
+  checkKey: '123456',
+});
 
 // test
 client({
