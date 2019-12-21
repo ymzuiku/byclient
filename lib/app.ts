@@ -17,7 +17,8 @@ export const setServerLess = async (options: ILessOptions) => {
     return rep.send(data);
   });
   if (options.useWss) {
-    await createWss({ server: app.server, lessEvent: less });
+    const wss = await createWss({ server: app.server, lessEvent: less });
+    return wss;
   }
 
   return;

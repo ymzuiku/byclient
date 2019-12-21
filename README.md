@@ -145,6 +145,29 @@ client({
 }).then(res => {
   console.log(res.data);
 });
+
+// 复合操作:
+client({
+  events: [
+    {
+      db: 'test',
+      col: 'user',
+      method: 'find',
+      // 若查找或者编辑行为不成立，拦截后续的行为
+      block: true,
+      args: [{ username: { $eq: 'dog' }, password: { $eq: 'bbb' } }],
+    },
+    {
+      db: 'test',
+      col: 'user',
+      method: 'deleteOne',
+      // 若在服务端设置了 impose.user, 其中描述了必须声明对 user 表的操作必须校验 username 和 password
+      args: [{ username: { $eq: 'dog' }, password: { $eq: 'bbb' } }],
+    },
+  ],
+}).then(res => {
+  console.log(res.data);
+});
 ```
 
 以上示例演示了如何在客户端直接创建、修改、删除数据库的操作，并且演示了如何约定校验\剔除数据、添加非对称加密，以提高一部分安全性。

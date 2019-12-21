@@ -6,7 +6,6 @@ export function checkFilter(obj: any, matchs: string[]) {
   for (let i = 0; i < matchs.length; i++) {
     const match = matchs[i];
     const list = match.split('||');
-    console.log(list);
     let subMatch = false;
     list.forEach(m => {
       const txt = m.trim();

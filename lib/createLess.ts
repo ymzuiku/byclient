@@ -57,8 +57,10 @@ export const createLess = async (options: ILessOptions) => {
 
   // 请求事件
   async function event(reqBody: any) {
+    let out: any = { error: 'recall no run' };
+
     if (!reqBody) {
-      return { error: 'body or body.code is empty' };
+      return (out = { error: 'body or body.code is empty' });
     }
 
     const body: IBodyData[] = reqBody.events ? reqBody.events : [reqBody];
@@ -68,7 +70,7 @@ export const createLess = async (options: ILessOptions) => {
     const recall = async () => {
       // 如果 event 溢出
       if (eventNumber > body.length - 1) {
-        return { error: 'event is out' };
+        return (out = { error: 'event is out' });
       }
 
       // 计算是否是最后一个
@@ -89,7 +91,7 @@ export const createLess = async (options: ILessOptions) => {
       } = body[eventNumber];
 
       if (!canUseMethod.has(method)) {
-        return { error: `can not use "${method}" method` };
+        return (out = { error: `can not use "${method}" method` });
       }
 
       // 处理argsSha256
@@ -132,17 +134,19 @@ export const createLess = async (options: ILessOptions) => {
           col,
         );
 
-        if (reducerBack && reducerBack.error) {
-          return reducerBack;
-        }
-        if (reducerBack && reducerBack.nextData) {
-          dbName = reducerBack.nextData.db;
-          colName = reducerBack.nextData.col;
-          block = reducerBack.nextData.block;
-          method = reducerBack.nextData.method;
-          args = reducerBack.nextData.args;
-          argsSha256 = reducerBack.nextData.argsSha256;
-          argsObjectId = reducerBack.nextData.argsObjectId;
+        if (reducerBack) {
+          if (reducerBack.error) {
+            return (out = reducerBack);
+          }
+          if (reducerBack.nextData) {
+            dbName = reducerBack.nextData.db;
+            colName = reducerBack.nextData.col;
+            block = reducerBack.nextData.block;
+            method = reducerBack.nextData.method;
+            args = reducerBack.nextData.args;
+            argsSha256 = reducerBack.nextData.argsSha256;
+            argsObjectId = reducerBack.nextData.argsObjectId;
+          }
         }
       }
 
@@ -155,37 +159,39 @@ export const createLess = async (options: ILessOptions) => {
           response = await (col as any)[method](...args);
         }
       } catch (err) {
-        return { error: 'database method error', msg: err, info: { dbName, colName, method } };
+        return (out = { error: 'database method error', msg: err, info: { dbName, colName, method } });
       }
 
       if (block) {
         if (!response) {
-          return { error: 'block: data void' };
+          return (out = { error: 'block: data void' });
         }
-        const keys = Object.keys(block);
-        let blockError: any = null;
-        for (let i = 0; i < keys.length; i++) {
-          const key = keys[i];
-          const value = block[key];
-
-          if (get(response, key) !== block[key]) {
-            blockError = `block: ${key} is not ${value}`;
-            break;
-          }
+        if (method === 'find' && response.length === 0) {
+          return (out = { error: 'block: not find' });
         }
+        if (response.result && !response.result.n) {
+          const { connection, message, ...sendData } = response;
 
-        if (blockError) {
-          return { error: blockError };
+          // 剔除不需要返回的
+          const allTrim = new Set([...(remove || [])]);
+
+          allTrim.forEach(key => {
+            set(sendData, key, undefined);
+          });
+          return (out = { error: 'block: data result.n is 0', res: sendData });
         }
       }
+
       if (!isNeedSend) {
         eventNumber += 1;
         await recall();
+
         return;
       }
 
       if (!response) {
-        return { mes: 'data is empty' };
+        out = { mes: 'data is empty' };
+        return;
       }
       if (response) {
         const { connection, message, ...sendData } = response;
@@ -197,13 +203,19 @@ export const createLess = async (options: ILessOptions) => {
           set(sendData, key, undefined);
         });
 
-        return { error: sendData };
+        if (method === 'find') {
+          out = { list: response };
+          return;
+        }
+
+        out = sendData;
+        return;
       }
     };
 
-    const response = await recall();
+    await recall();
 
-    return response;
+    return out;
   }
 
   return event;

@@ -27,9 +27,11 @@ const createWss = (params: IWSParams) => {
     }
     ws.on('message', function incoming(data) {
       if (less) {
-        const body = JSON.parse(data.toString());
+        const body = JSON.parse(data.toString()) || {};
+
         const _ws = body._ws;
         less(body).then((response: any) => {
+          console.log(response);
           response._ws = _ws;
           ws.send(JSON.stringify(response));
         });
