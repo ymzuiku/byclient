@@ -2,6 +2,7 @@ import { db } from './db';
 import { ObjectId, Collection } from 'mongodb';
 import { set, get } from 'lodash';
 import { sha256 } from './sha256';
+import { app } from './app';
 
 interface IReducerBack {
   error: any;
@@ -179,6 +180,7 @@ export const createLess = async (options: ILessOptions) => {
           response = await (col as any)[method](...args);
         }
       } catch (err) {
+        app.log.error(err);
         return (out = { error: 'database method error', msg: err, info: { dbName, colName, method } });
       }
 

@@ -21,6 +21,6 @@
     "outDir": "./umd",
     "declarationDir": "./"
   },
-  "exclude": ["node_modules", "umd"],
-  "include": ["lib"]
+  "exclude": ["node_modules", "dist"],
+  "include": ["lib", "server"]
 }

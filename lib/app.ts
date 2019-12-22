@@ -23,3 +23,34 @@ export const setServerLess = async (options: ILessOptions) => {
 
   return;
 };
+
+export const setMethodLess = async (methods: any) => {
+  async function methodCheck(body: any) {
+    if (!body || !body.method) {
+      return { error: 'need method' };
+    }
+    const method = methods[body.method];
+    if (!method) {
+      return { error: 'method is undefined' };
+    }
+
+    try {
+      const data = await method(body);
+
+      return data;
+    } catch (err) {
+      app.log.error(err);
+      return { error: 'method run error', info: err };
+    }
+  }
+
+  app.post('/methods', async (req, rep) => {
+    const body = req.body;
+    const res = await methodCheck(body);
+    return rep.send(res || { error: 'method is no callbak' });
+  });
+
+  const wss = await createWss({ server: app.server, lessEvent: methodCheck });
+
+  return wss;
+};
