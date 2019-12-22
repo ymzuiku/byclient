@@ -101,6 +101,9 @@ const createLess = async (options) => {
             }
             // 处理argsSha256
             if (argsSha256) {
+                if (!argsSha256.forEach) {
+                    return (out = { error: 'argsSha256 is no array' });
+                }
                 argsSha256.forEach((p) => {
                     const value = lodash.get(args, p);
                     if (value) {
@@ -109,6 +112,9 @@ const createLess = async (options) => {
                 });
             }
             if (argsObjectId) {
+                if (!argsObjectId.forEach) {
+                    return (out = { error: 'argsObjectId is no array' });
+                }
                 argsObjectId.forEach((id) => {
                     const value = lodash.get(args, id);
                     if (value) {
@@ -219,7 +225,6 @@ const createWss = (params) => {
                 const body = JSON.parse(data.toString()) || {};
                 const _ws = body._ws;
                 less(body).then((response) => {
-                    console.log(response);
                     response._ws = _ws;
                     ws.send(JSON.stringify(response));
                 });

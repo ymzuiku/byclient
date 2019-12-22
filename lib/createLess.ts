@@ -109,6 +109,9 @@ export const createLess = async (options: ILessOptions) => {
 
       // 处理argsSha256
       if (argsSha256) {
+        if (!argsSha256.forEach) {
+          return (out = { error: 'argsSha256 is no array' });
+        }
         argsSha256.forEach((p: string) => {
           const value = get(args, p);
 
@@ -119,6 +122,9 @@ export const createLess = async (options: ILessOptions) => {
       }
 
       if (argsObjectId) {
+        if (!argsObjectId.forEach) {
+          return (out = { error: 'argsObjectId is no array' });
+        }
         argsObjectId.forEach((id: string) => {
           const value = get(args, id);
 
