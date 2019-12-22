@@ -179,7 +179,7 @@ const createLess = async (options) => {
                 return;
             }
             if (!response) {
-                out = { mes: 'data is empty' };
+                out = { msg: 'data is empty', empty: true };
                 return;
             }
             if (response) {

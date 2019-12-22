@@ -203,7 +203,7 @@ export const createLess = async (options: ILessOptions) => {
       }
 
       if (!response) {
-        out = { mes: 'data is empty' };
+        out = { msg: 'data is empty', empty: true };
         return;
       }
       if (response) {
