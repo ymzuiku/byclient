@@ -137,6 +137,7 @@ const createLess = async (options) => {
                 }, col);
                 if (reducerBack) {
                     if (reducerBack.error) {
+                        reducerBack.isReducer = true;
                         return (out = reducerBack);
                     }
                     if (reducerBack.nextData) {
@@ -164,7 +165,7 @@ const createLess = async (options) => {
             }
             if (block) {
                 if (!response) {
-                    return (out = { error: 'block: data void' });
+                    return (out = { error: 'data is empty', empty: true });
                 }
                 if (method === 'find' && response.length === 0) {
                     return (out = { error: 'block: not find' });
