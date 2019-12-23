@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Test client</title>
+    <script src="https://unpkg.com/xhr-ws@1.0.5/umd/xhr-ws.js"></script>
+    <!-- <script src="../../xhr-ws/umd/xhr-ws.js"></script> -->
+  </head>
+  <body>
+    <!-- http example -->
+    <script>
+      var httpClient = createHttpClient('http://127.0.0.1:4010/less');
+
+      window.onHttpClick = function() {
+        httpClient({
+          db: 'test',
+          col: 'test',
+          method: 'insertOne',
+          args: [{ name: 'dog', age: '11', createAt: Date.now() }],
+        }).then(function(res) {
+          document.getElementById('response-http').innerHTML = JSON.stringify(res);
+        });
+      };
+    </script>
+    <button onclick="onHttpClick()">test http</button>
+    <div>response-http:</div>
+    <div id="response-http"></div>
+
+    <!-- websocket example -->
+    <script>
+      var wsClient = createWsClient('ws://127.0.0.1:4010');
+
+      window.onWsClick = function() {
+        wsClient({
+          // db: 'test',
+          // col: 'test',
+          // method: 'find',
+          // args: [{ name: { $eq: 'dog' } }, { name: 'dog', age: '22', createAt: Date.now() }],
+          events: [
+            {
+              db: 'test',
+              col: 'test',
+              method: 'find',
+              // 若查找或者编辑行为不成立，拦截后续的行为
+              block: true,
+              args: [{ name: { $eq: 'dog' } }],
+            },
+            {
+              db: 'test',
+              col: 'test',
+              method: 'deleteOne',
+              // 若在服务端设置了 impose.user, 其中描述了必须声明对 user 表的操作必须校验 username 和 password
+              args: [{ username: { $eq: 'dog' }, password: { $eq: 'bbb' } }],
+            },
+          ],
+        }).then(function(res) {
+          document.getElementById('response-ws').innerHTML = JSON.stringify(res);
+        });
+      };
+    </script>
+    <button onclick="onWsClick()">test websocket</button>
+    <div>response-ws:</div>
+    <div id="response-ws"></div>
+    <!-- mock 示例 -->
+    <script>
+      var mock = createHttpClient('http://0.0.0.0:4010/less');
+
+      // 增加
+      var addProductInfo = async body => {
+        // 假定商品不可同名，查询是当前商品是否已经存在同名
+        const checker = await mock({
+          // 数据库名
+          db: 'mock',
+          // 表名
+          col: 'products',
+          // mongodb 方法
+          method: 'findOne',
+          // mongodb 方法参数
+          args: [{ name: { $eq: body.name } }],
+        });
+
+        // 根据约定的错误格式，进行返回
+        if (!checker.empty) {
+          return { code: 500, error: '已有相同商品名，不可重复创建', _mock: checker };
+        }
+
+        // 若 checker 通过，进行后续的插入行为
+        const inserter = await mock({
+          db: 'mock',
+          col: 'products',
+          method: 'insertOne',
+          args: [body],
+        });
+
+        if (inserter.result.n === 1) {
+          // 处理返回数据为接口约定的格式
+          return { msg: '操作成功', code: 200, _mock: inserter };
+        }
+
+        return { error: '服务器异常', code: 500, _mock: inserter };
+
+        // 当后端接口实现之后，移除 mock 请求，替换以下真实请求
+        // const data = await axios.post(`/product/info`);
+        // return data;
+      };
+
+      // 查询
+      var getProductInfo = async body => {
+        const res = await mock({
+          db: 'mock',
+          col: 'products',
+          method: 'findOne',
+          args: [{ pid: { $eq: body.pid } }],
+        });
+
+        // 处理返回数据为接口约定的格式
+        return { code: 200, data: res, _mock: res };
+
+        // 当后端接口实现之后，移除 mock 请求，替换以下真实请求
+        // const data = await axios.get(`/product/info?pid=${body.pid}`);
+        // return data;
+      };
+
+      // 更新
+      var updateProductInfo = async body => {
+        const res = await mock({
+          db: 'mock',
+          col: 'products',
+          method: 'updateOne',
+          args: [{ pid: { $eq: body.pid } }, { $set: body }],
+        });
+
+        // 处理返回数据为接口约定的格式
+        return { code: 200, data: res };
+
+        // 当后端接口实现之后，移除 mock 请求，替换以下真实请求
+        // ...
+      };
+
+      // 删除商品
+      var deleteProduct = async body => {
+        const res = await mock({
+          db: 'mock',
+          col: 'products',
+          method: 'deleteOne',
+          args: [{ pid: { $eq: body.pid } }],
+        });
+
+        if (res.result.n === 1) {
+          // 处理返回数据为接口约定的格式
+          return { msg: '成功删除商品', code: 200, _mock: res };
+        }
+
+        return { error: '服务器异常', code: 500, _mock: res };
+
+        // 当后端接口实现之后，移除 mock 请求，替换以下真实请求
+        // ....
+      };
+
+      // addProductInfo({ name: 'test2', pid: 1, age: 10 }).then(res => {
+      //   console.log(res);
+      // });
+
+      // getProductInfo({ pid: 1 }).then(res => console.log(res));
+      // updateProductInfo({ pid: 1, age: 100 }).then(res => console.log(res));
+      // deleteProduct({ pid: 1 }).then(res => console.log(res));
+    </script>
+  </body>
+</html>

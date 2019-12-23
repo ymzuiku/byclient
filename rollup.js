@@ -32,9 +32,9 @@ clearDir(pwd('umd'));
 
 const watchOptions = {
   external: ['ws', 'node-rsa', 'crypto', 'lodash', 'fastify', 'fastify-cors', 'mongodb', 'fs-extra', 'path', 'fs'],
-  input: './server/index.ts',
+  input: './lib/index.ts',
   output: {
-    file: './dist/index.js',
+    file: './umd/index.js',
     format: 'cjs',
     name: 'handserver',
     globals: {

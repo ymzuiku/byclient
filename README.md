@@ -1,6 +1,11 @@
 # 旨在解放小型应用的后端工作量
 
-基于 `fastify` 的 serverless
+基于 `fastify` 的 纯前端编辑后端数据库
+
+- 有一系列的权限控制方案
+- 非业务场景更合适，例如 mock 服务
+
+前端相关 mock 使用，请阅读 [前端配合 handserver 实现有数据变化的 mock](README-MOCK.md)
 
 ## serverLess
 
