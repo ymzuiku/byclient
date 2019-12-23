@@ -1,6 +1,6 @@
 # 前端配合 handserver 实现有数据变化的 mock
 
-使用 handserver 实现 mock，对比传统的 mock 优势有：
+[handserver](https://github.com/ymzuiku/handserver) 是一个个人编写的用于快速搭建 demo 的后端服务，使用 handserver 实现 mock，对比传统的 mock 优势有：
 
 1. 不需要配置其他项目，提高 mock 的使用率
 2. 有“真实”数据互动，可以在前端真实实现增删查改；更方便多个前端在迭代中可以协同 mock 工作
@@ -8,7 +8,7 @@
 
 ## 启动 mock 服务
 
-首先使用 handserver 在后端启动一个开放服务，由前端控制数据库，接口为: http://服务ip:4020/mock
+首先使用 handserver 在后端启动一个开放服务，由前端控制数据库:
 
 ```js
 const handserver = require('handserver');
@@ -106,7 +106,9 @@ function createHttpClient(url: string, options?: IOptions) {
 export { createHttpClient };
 ```
 
-## 使用封装请求函数，方便开发后期移除 mock
+## 在前端实现 mock 服务的增删查改
+
+我们以一个商品详情的操作作为用例：
 
 ```ts
 import { createHttpClient } from './createHttpClient';
@@ -118,7 +120,7 @@ export const addProductInfo = async (body: any) => {
   // 假定商品不可同名，查询是当前商品是否已经存在同名
   const checker = await mock({
     // 数据库名
-    db: 'mock',
+    db: 'ir-mock',
     // 表名
     col: 'products',
     // mongodb 方法
@@ -134,7 +136,7 @@ export const addProductInfo = async (body: any) => {
 
   // 若 checker 通过，进行后续的插入行为
   const inserter = await mock({
-    db: 'mock',
+    db: 'ir-mock',
     col: 'products',
     method: 'insertOne',
     args: [body],
@@ -155,7 +157,7 @@ export const addProductInfo = async (body: any) => {
 // 查询
 export const getProductInfo = async (body: any) => {
   const res = await mock({
-    db: 'mock',
+    db: 'ir-mock',
     col: 'products',
     method: 'findOne',
     args: [{ pid: { $eq: body.pid } }],
@@ -172,7 +174,7 @@ export const getProductInfo = async (body: any) => {
 // 更新
 export const updateProductInfo = async (body: any) => {
   const res = await mock({
-    db: 'mock',
+    db: 'ir-mock',
     col: 'products',
     method: 'updateOne',
     args: [{ pid: { $eq: body.pid } }, { $set: body }],
@@ -188,7 +190,7 @@ export const updateProductInfo = async (body: any) => {
 // 删除商品
 export const deleteProduct = async (body: any) => {
   const res = await mock({
-    db: 'mock',
+    db: 'ir-mock',
     col: 'products',
     method: 'deleteOne',
     args: [{ pid: { $eq: body.pid } }],
